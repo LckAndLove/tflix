@@ -12,15 +12,38 @@
 
   var APP_VERSION = '1.3.0';
 
+  // Function to open external URLs via Tauri or top navigation
+  function openExternalUrl(url) {
+    if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+      window.__TAURI__.core.invoke('open_external', { url: url }).catch(function () {
+        window.location.href = url;
+      });
+    } else {
+      window.location.href = url;
+    }
+  }
+
   // Override window.open in top frame and iframes to block popunder ads.
-  // If the target is the Support link, redirect top location so Rust on_navigation opens it in the system browser.
+  // If the target is GitHub / Support link, delegate to external system browser.
   var origOpen = window.open;
   window.open = function (url) {
-    if (url && typeof url === 'string' && (url.indexOf('https://github.com/LckAndLove/tflix') === 0 || url.indexOf('https://github.com/TomasTNunes/tflix') === 0)) {
-      window.location.href = url;
+    if (url && typeof url === 'string' && (url.indexOf('https://github.com/LckAndLove/tflix') === 0 || url.indexOf('https://github.com/TomasTNunes/tflix') === 0 || url.indexOf('github.com') !== -1)) {
+      openExternalUrl(url);
     }
     return null;
   };
+
+  // Intercept click on <a> tags targeting GitHub or #support-btn to ensure system browser opens them
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (a && a.href) {
+      if (a.id === 'support-btn' || a.href.indexOf('github.com') !== -1) {
+        e.preventDefault();
+        e.stopPropagation();
+        openExternalUrl(a.href);
+      }
+    }
+  }, true);
 
   // Intercept fetch to api.themoviedb.org to ensure language parameter matches user preference
   var origFetch = window.fetch;

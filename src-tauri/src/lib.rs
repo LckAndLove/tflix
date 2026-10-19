@@ -69,6 +69,11 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    app.opener().open_url(&url, None::<&str>).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -81,7 +86,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![check_update, install_update])
+        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external])
         .setup(|app| {
             let app_handle = app.handle().clone();
             let target_url: Url = SITE_URL.parse().expect("valid site URL");
@@ -97,7 +102,7 @@ pub fn run() {
                 .on_navigation(move |url| {
                     let url_str = url.as_str();
                     // Intercept Support link and open in external system browser
-                    if url_str.starts_with(SUPPORT_URL) {
+                    if url_str.starts_with(SUPPORT_URL) || url_str.contains("github.com") {
                         let _ = app_handle.opener().open_url(url_str, None::<&str>);
                         return false;
                     }

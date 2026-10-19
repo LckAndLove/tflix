@@ -1983,6 +1983,15 @@ $('nav-check-update')?.addEventListener('click', () => {
   langMenu.classList.remove('open');
   checkForUpdates(true);
 });
+$('support-btn')?.addEventListener('click', e => {
+  e.preventDefault();
+  const url = 'https://github.com/LckAndLove/tflix';
+  if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+    window.__TAURI__.core.invoke('open_external', { url }).catch(() => { window.location.href = url; });
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+});
 
 /* ─── INIT ─── */
 (async function init() {
