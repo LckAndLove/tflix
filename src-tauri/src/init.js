@@ -16,7 +16,7 @@
   // If the target is the Support link, redirect top location so Rust on_navigation opens it in the system browser.
   var origOpen = window.open;
   window.open = function (url) {
-    if (url && typeof url === 'string' && url.indexOf('https://github.com/TomasTNunes/tflix') === 0) {
+    if (url && typeof url === 'string' && (url.indexOf('https://github.com/LckAndLove/tflix') === 0 || url.indexOf('https://github.com/TomasTNunes/tflix') === 0)) {
       window.location.href = url;
     }
     return null;

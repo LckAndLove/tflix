@@ -43,7 +43,7 @@ class MainActivity : Activity() {
 
         // The site's Support button links here — the one pop-up we let
         // through, handed to the system browser (same as the desktop app).
-        private const val SUPPORT_URL = "https://github.com/TomasTNunes/tflix"
+        private const val SUPPORT_URL = "https://github.com/LckAndLove/tflix"
     }
 
     private lateinit var webView: WebView

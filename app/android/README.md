@@ -21,7 +21,7 @@ It also presents a plain-Chrome User-Agent (the WebView default carries `; wv` /
 ## Install (sideload)
 
 1. Download `tflix-android.<version>.apk` from the
-   [latest release](https://github.com/TomasTNunes/tflix/releases/latest).
+   [latest release](https://github.com/LckAndLove/tflix/releases/latest).
 2. **Phone/tablet**: open the APK and allow "install unknown apps" when prompted.
 3. **Android TV**: install via a file manager app (e.g. *Send files to TV*, *X-plore*)
    or with adb: `adb install tflix-android.<version>.apk`.

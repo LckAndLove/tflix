@@ -5,7 +5,7 @@ use serde::Serialize;
 
 const SITE_URL: &str = "https://tflix.nunesnetwork.com/";
 const SITE_ORIGIN: &str = "https://tflix.nunesnetwork.com";
-const SUPPORT_URL: &str = "https://github.com/TomasTNunes/tflix";
+const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 
 const INIT_SCRIPT: &str = include_str!("init.js");
 

@@ -28,7 +28,7 @@ Prefer a real app over a browser tab? TFLIX is also available as a native **Wind
 - 🔄 Always up to date — loads the live site, so new servers and fixes appear instantly
 - ✅ No setup — no API token to enter, just install and open
 
-📥 Download it from the [latest release](https://github.com/TomasTNunes/tflix/releases/latest).
+📥 Download it from the [latest release](https://github.com/LckAndLove/tflix/releases/latest).
 
 🔄 Already installed? Download the newest installer from that same page and run it to update — no uninstall needed. See [Updating](app/windows/README.md#update) for details.
 
@@ -44,7 +44,7 @@ tablets, and **Android TV** (it shows up in the TV launcher).
 - 🔄 Always up to date — loads the live site, so new servers and fixes appear instantly
 - 📺 Android TV ready — installs and launches from the Leanback launcher
 
-📥 Download the APK from the [latest release](https://github.com/TomasTNunes/tflix/releases/latest)
+📥 Download the APK from the [latest release](https://github.com/LckAndLove/tflix/releases/latest)
 and sideload it (on TV: install via a file-manager app or `adb install`).
 
 👉 See the [Android app guide](app/android/README.md) for more info. -->
