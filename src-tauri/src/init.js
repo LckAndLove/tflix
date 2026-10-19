@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '1.1.2';
+  var APP_VERSION = '1.3.0';
 
   // Override window.open in top frame and iframes to block popunder ads.
   // If the target is the Support link, redirect top location so Rust on_navigation opens it in the system browser.
@@ -59,6 +59,7 @@
     var label = document.createElement('div');
     label.id = VER_ID;
     label.textContent = 'v' + APP_VERSION;
+    label.title = '检查更新 / Check for updates';
 
     Object.assign(label.style, {
       position: 'fixed',
@@ -68,11 +69,24 @@
       fontFamily: 'system-ui, -apple-system, sans-serif',
       letterSpacing: '0.3px',
       color: 'rgba(244,244,247,0.35)',
-      pointerEvents: 'none',
+      cursor: 'pointer',
+      pointerEvents: 'auto',
       userSelect: 'none',
       zIndex: '2147483646',
       opacity: '0',
-      transition: 'opacity .25s'
+      transition: 'opacity .25s, color .2s'
+    });
+
+    label.addEventListener('mouseenter', function () {
+      label.style.color = 'rgba(244,244,247,0.85)';
+    });
+    label.addEventListener('mouseleave', function () {
+      label.style.color = 'rgba(244,244,247,0.35)';
+    });
+    label.addEventListener('click', function () {
+      if (typeof window.checkForUpdates === 'function') {
+        window.checkForUpdates(true);
+      }
     });
 
     document.body.appendChild(label);

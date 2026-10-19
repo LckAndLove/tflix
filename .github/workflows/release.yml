@@ -58,14 +58,23 @@ jobs:
           tauri build --target universal-apple-darwin
           cd src-tauri/target/universal-apple-darwin/release/bundle/macos
           ditto -c -k --sequesterRsrc --keepParent TFLIX.app ../dmg/tflix-mac-universal.zip
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Build Windows Application
         if: matrix.platform == 'win'
         run: tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Build Linux Application
         if: matrix.platform == 'linux'
         run: tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
@@ -78,6 +87,13 @@ jobs:
             src-tauri/target/**/bundle/msi/*.msi
             src-tauri/target/**/bundle/appimage/*.AppImage
             src-tauri/target/**/bundle/deb/*.deb
+            src-tauri/target/**/bundle/macos/*.tar.gz
+            src-tauri/target/**/bundle/macos/*.tar.gz.sig
+            src-tauri/target/**/bundle/nsis/*.zip
+            src-tauri/target/**/bundle/nsis/*.zip.sig
+            src-tauri/target/**/bundle/appimage/*.tar.gz
+            src-tauri/target/**/bundle/appimage/*.tar.gz.sig
+            src-tauri/target/**/*.sig
           if-no-files-found: error
 
   build-android:
@@ -131,7 +147,7 @@ jobs:
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
           else
-            TAG="v1.1.2"
+            TAG="v1.3.0"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Using release tag: ${TAG}"
@@ -141,6 +157,51 @@ jobs:
           mkdir -p release-files
           find release-assets/ -type f -exec cp -v {} release-files/ \;
           ls -lh release-files/
+
+      - name: Generate Tauri Updater Manifest
+        env:
+          TAG_NAME: ${{ steps.vars.outputs.tag }}
+        run: |
+          node -e '
+          const fs = require("fs");
+          const path = require("path");
+
+          const tag = process.env.TAG_NAME || "v1.3.0";
+          const version = tag.replace(/^v/, "");
+          const repo = "LckAndLove/tflix";
+          const downloadBase = `https://github.com/${repo}/releases/download/${tag}`;
+
+          const files = fs.readdirSync("release-files");
+          const platforms = {};
+
+          files.forEach(f => {
+            if (f.endsWith(".sig")) {
+              const targetFile = f.slice(0, -4);
+              if (files.includes(targetFile)) {
+                const signature = fs.readFileSync(path.join("release-files", f), "utf8").trim();
+                const url = `${downloadBase}/${encodeURIComponent(targetFile)}`;
+                if (targetFile.includes(".app.tar.gz") || targetFile.includes("darwin") || targetFile.includes("macos")) {
+                  platforms["darwin-aarch64"] = { signature, url };
+                  platforms["darwin-x86_64"] = { signature, url };
+                } else if (targetFile.includes(".nsis.zip") || targetFile.includes("x64-setup") || targetFile.includes("windows")) {
+                  platforms["windows-x86_64"] = { signature, url };
+                } else if (targetFile.includes(".AppImage.tar.gz") || targetFile.includes("linux") || targetFile.includes("amd64")) {
+                  platforms["linux-x86_64"] = { signature, url };
+                }
+              }
+            }
+          });
+
+          const manifest = {
+            version: version,
+            notes: `TFLIX ${tag} release update`,
+            pub_date: new Date().toISOString(),
+            platforms: platforms
+          };
+
+          fs.writeFileSync("release-files/latest.json", JSON.stringify(manifest, null, 2));
+          console.log("Generated latest.json:\n", JSON.stringify(manifest, null, 2));
+          '
 
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
