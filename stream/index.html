@@ -259,6 +259,13 @@
     </button>
     <div class="logo" id="logo">TFLIX</div>
     <div class="now-title" id="now-title">Loading…</div>
+    <button class="support-btn" id="lang-btn" title="Language / 语言" aria-label="Language / 语言" style="cursor:pointer;">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      <span class="s-name" id="lang-label">EN</span>
+    </button>
     <a class="support-btn" id="support-btn" href="https://github.com/TomasTNunes/tflix/issues" target="_blank" rel="noopener noreferrer" title="Report an issue or get support on GitHub">
       <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
       <span class="s-name">Support</span>
@@ -310,14 +317,68 @@ const HEADERS = {
 };
 
 const STORAGE_KEY = 'tflix_server';
+const LANG_STORAGE_KEY = 'tflix_lang';
+
+const I18N = {
+  en: {
+    langShort: 'EN',
+    back: 'Back',
+    support: 'Support',
+    serversHeader: 'Streaming Servers',
+    nowStreaming: 'Now streaming from %s',
+    season: 'Season',
+    episode: 'Episode',
+    nextEp: 'Next Episode',
+    nextEpTitle: 'Next: S%s E%s',
+    noNextEp: 'No next episode',
+    loading: 'Loading…',
+    movieFallback: 'Movie',
+    seriesFallback: 'Series',
+    fatalTitle: 'Title not found',
+    fatalDesc: 'This title does not exist or could not be loaded.',
+    fatalLink: 'Back to TFLIX',
+    nothingTitle: 'Nothing to play',
+    nothingDesc: 'This link is missing the title information.',
+    switchedToast: 'Switched to English'
+  },
+  zh: {
+    langShort: '中',
+    back: '返回',
+    support: '技术支持',
+    serversHeader: '播放源服务器',
+    nowStreaming: '正在从 %s 播放',
+    season: '季',
+    episode: '集',
+    nextEp: '下一集',
+    nextEpTitle: '下一集：第 %s 季 第 %s 集',
+    noNextEp: '没有下一集',
+    loading: '加载中…',
+    movieFallback: '电影',
+    seriesFallback: '电视剧',
+    fatalTitle: '未找到影视内容',
+    fatalDesc: '该影视内容不存在或加载失败。',
+    fatalLink: '返回 TFLIX 首页',
+    nothingTitle: '暂无播放内容',
+    nothingDesc: '该链接缺少影视编号信息。',
+    switchedToast: '已切换为简体中文'
+  }
+};
+
+let currentLang = (() => {
+  const saved = localStorage.getItem(LANG_STORAGE_KEY);
+  if (saved && (saved === 'zh' || saved === 'en')) return saved;
+  return (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en';
+})();
+
+const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
 
 const SERVERS = [
-  { id: 1, name: 'Rakan',   note: 'Generally better quality.' },
-  { id: 2, name: 'Bard',    note: 'Recommended for recently released movies.' },
-  { id: 3, name: 'Xayah',   note: 'Recommended for recently released movies.' },
-  { id: 4, name: 'Ekko',    note: 'May have 4K. Generally better quality.' },
-  { id: 5, name: 'Naafiri', note: 'May have 4K. Generally better quality.' },
-  { id: 6, name: 'Ryze',    note: 'Generally better quality.' },
+  { id: 1, name: 'Rakan',   noteEn: 'Generally better quality.', noteZh: '画质普遍较好。' },
+  { id: 2, name: 'Bard',    noteEn: 'Recommended for recently released movies.', noteZh: '推荐用于最新上映的电影。' },
+  { id: 3, name: 'Xayah',   noteEn: 'Recommended for recently released movies.', noteZh: '推荐用于最新上映的电影。' },
+  { id: 4, name: 'Ekko',    noteEn: 'May have 4K. Generally better quality.', noteZh: '可能支持 4K，画质普遍较好。' },
+  { id: 5, name: 'Naafiri', noteEn: 'May have 4K. Generally better quality.', noteZh: '可能支持 4K，画质普遍较好。' },
+  { id: 6, name: 'Ryze',    noteEn: 'Generally better quality.', noteZh: '画质普遍较好。' },
 ];
 
 /* Exact streaming source resolvers (ported from the original player) */
@@ -334,7 +395,9 @@ const serverUrlResolvers = {
 /* ─── STATE ─── */
 const $ = id => document.getElementById(id);
 const tmdb = async path => {
-  const r = await fetch(`${API_BASE}${path}`, { headers: HEADERS });
+  const sep = path.includes('?') ? '&' : '?';
+  const lang = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+  const r = await fetch(`${API_BASE}${path}${sep}language=${lang}`, { headers: HEADERS });
   if (!r.ok) throw new Error('TMDB request failed');
   return r.json();
 };
@@ -403,9 +466,12 @@ function loadPlayer() {
 }
 
 function updateTitleBar() {
-  const base = state.title || (state.type === 'movie' ? 'Movie' : 'Series');
+  const base = state.title || (state.type === 'movie' ? t('movieFallback') : t('seriesFallback'));
+  const epTag = currentLang === 'zh'
+    ? ` <span class="ep-tag">· 第 ${state.season} 季 第 ${state.episode} 集</span>`
+    : ` <span class="ep-tag">· S${state.season} E${state.episode}</span>`;
   $('now-title').innerHTML = state.type === 'tv'
-    ? `${esc(base)} <span class="ep-tag">· S${state.season} E${state.episode}</span>`
+    ? `${esc(base)}${epTag}`
     : esc(base);
   document.title = `${base} — TFLIX`;
 }
@@ -418,22 +484,78 @@ function buildServers() {
     const el = document.createElement('button');
     el.className = 'server-card' + (s.id === state.server ? ' selected' : '');
     el.dataset.id = s.id;
+    const note = currentLang === 'zh' ? s.noteZh : s.noteEn;
     el.innerHTML = `
       <span class="s-dot"></span>
       <span class="s-meta">
         <span class="s-name">${esc(s.name)}</span>
-        <span class="s-note">${esc(s.note)}</span>
+        <span class="s-note">${esc(note)}</span>
       </span>`;
     el.addEventListener('click', () => {
       if (s.id === state.server) return;
       state.server = s.id;
       document.querySelectorAll('.server-card').forEach(c => c.classList.toggle('selected', c === el));
       loadPlayer();
-      toast(`Now streaming from ${s.name}`);
+      toast(t('nowStreaming').replace('%s', s.name));
     });
     grid.appendChild(el);
   });
 }
+
+function applyTranslations() {
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  $('lang-label').textContent = t('langShort');
+  $('back-btn').title = t('back');
+  $('back-btn').setAttribute('aria-label', t('back'));
+  const supText = $('support-btn')?.querySelector('.s-name');
+  if (supText) supText.textContent = t('support');
+  const srvHeader = document.querySelector('#servers-panel .panel-title');
+  if (srvHeader) srvHeader.textContent = t('serversHeader');
+  const selLabels = document.querySelectorAll('.selectors .field-label');
+  if (selLabels[0]) selLabels[0].textContent = t('season');
+  if (selLabels[1]) selLabels[1].textContent = t('episode');
+  const nextSpan = $('nextep-btn')?.querySelector('span');
+  if (nextSpan) nextSpan.textContent = t('nextEp');
+  updateNextBtn();
+  buildServers();
+}
+
+async function changeLanguage(newLang) {
+  if (newLang === currentLang) return;
+  currentLang = newLang;
+  localStorage.setItem(LANG_STORAGE_KEY, newLang);
+  applyTranslations();
+  toast(t('switchedToast'));
+
+  // Re-fetch title and details with new language
+  if (state.type === 'tv') {
+    try {
+      tvData = await tmdb(`/tv/${state.id}`);
+      state.title = tvData.name || tvData.original_name;
+      updateTitleBar();
+      for (const k in seasonCache) delete seasonCache[k];
+      const seasonSel = $('season-select');
+      const seasons = (tvData.seasons || []).filter(s => s.season_number > 0);
+      const sWord = t('season');
+      const epWord = currentLang === 'zh' ? '集' : 'ep';
+      seasonSel.innerHTML = (seasons.length ? seasons : [{ season_number: 1, episode_count: 1 }])
+        .map(s => `<option value="${s.season_number}" data-eps="${s.episode_count}">${sWord} ${s.season_number} · ${s.episode_count} ${epWord}</option>`)
+        .join('');
+      seasonSel.value = state.season;
+      await populateEpisodes(true);
+    } catch {}
+  } else {
+    try {
+      const data = await tmdb(`/movie/${state.id}`);
+      state.title = data.title || data.original_title;
+      updateTitleBar();
+    } catch {}
+  }
+}
+
+$('lang-btn').addEventListener('click', () => {
+  changeLanguage(currentLang === 'zh' ? 'en' : 'zh');
+});
 
 /* ─── TV SEASON / EPISODE ─── */
 async function setupTv() {
@@ -448,8 +570,10 @@ async function setupTv() {
     updateTitleBar();
 
     const seasons = (tvData.seasons || []).filter(s => s.season_number > 0);
+    const sWord = t('season');
+    const epWord = currentLang === 'zh' ? '集' : 'ep';
     seasonSel.innerHTML = (seasons.length ? seasons : [{ season_number: 1, episode_count: 1 }])
-      .map(s => `<option value="${s.season_number}" data-eps="${s.episode_count}">Season ${s.season_number} · ${s.episode_count} ep</option>`)
+      .map(s => `<option value="${s.season_number}" data-eps="${s.episode_count}">${sWord} ${s.season_number} · ${s.episode_count} ${epWord}</option>`)
       .join('');
     seasonSel.value = state.season;
     if (!seasonSel.value) { state.season = parseInt(seasonSel.options[0].value); seasonSel.value = state.season; }
@@ -480,20 +604,25 @@ async function populateEpisodes(setToState) {
   const opt = seasonSel.options[seasonSel.selectedIndex];
   const fallbackCount = parseInt(opt?.dataset?.eps || 24);
 
-  episodeSel.innerHTML = '<option>Loading…</option>';
+  episodeSel.innerHTML = `<option>${t('loading')}</option>`;
   const key = `${state.id}-${state.season}`;
   try {
     let data = seasonCache[key];
     if (!data) { data = await tmdb(`/tv/${state.id}/season/${state.season}`); seasonCache[key] = data; }
     const eps = data?.episodes || [];
     if (!eps.length) throw new Error('no eps');
+    const epPrefix = currentLang === 'zh' ? '第 ' : 'Ep ';
+    const epSuffix = currentLang === 'zh' ? ' 集' : '';
     episodeSel.innerHTML = eps.map(ep => {
       const d = fmtDate(ep.air_date);
-      return `<option value="${ep.episode_number}">Ep ${ep.episode_number}${d ? ' · ' + d : ''}</option>`;
+      const name = (ep.name && ep.name !== `Episode ${ep.episode_number}` && ep.name !== `第 ${ep.episode_number} 集`) ? ` · ${ep.name}` : '';
+      return `<option value="${ep.episode_number}">${epPrefix}${ep.episode_number}${epSuffix}${name}${d ? ' · ' + d : ''}</option>`;
     }).join('');
   } catch {
-    episodeSel.innerHTML = Array.from({ length: fallbackCount }, (_, i) =>
-      `<option value="${i+1}">Episode ${i+1}</option>`).join('');
+    episodeSel.innerHTML = Array.from({ length: fallbackCount }, (_, i) => {
+      const epPrefix = currentLang === 'zh' ? `第 ${i+1} 集` : `Episode ${i+1}`;
+      return `<option value="${i+1}">${epPrefix}</option>`;
+    }).join('');
   }
 
   if (setToState) {
@@ -523,7 +652,7 @@ function updateNextBtn() {
   const btn = $('nextep-btn');
   const next = computeNext();
   btn.disabled = !next;
-  btn.title = next ? `Next: S${next.season} E${next.episode}` : 'No next episode';
+  btn.title = next ? t('nextEpTitle').replace('%s', next.season).replace('%s', next.episode) : t('noNextEp');
 }
 
 async function goNextEpisode() {
@@ -555,9 +684,9 @@ async function setupMovie() {
 function showFatal() {
   $('main').innerHTML = `
     <div class="fatal">
-      <h2>Title not found</h2>
-      <p>This title does not exist or could not be loaded.</p>
-      <a href="/">Back to TFLIX</a>
+      <h2>${esc(t('fatalTitle'))}</h2>
+      <p>${esc(t('fatalDesc'))}</p>
+      <a href="/">${esc(t('fatalLink'))}</a>
     </div>`;
   document.title = 'TFLIX';
 }
@@ -566,6 +695,9 @@ function fmtDate(d){
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt)) return '';
+  if (currentLang === 'zh') {
+    return dt.toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' });
+  }
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function toast(msg){
@@ -585,13 +717,14 @@ $('back-btn').addEventListener('click', () => {
 
 /* ─── INIT ─── */
 (async function init() {
+  applyTranslations();
   state = readParams();
   if (!state) {
     $('main').innerHTML = `
       <div class="fatal">
-        <h2>Nothing to play</h2>
-        <p>This link is missing the title information.</p>
-        <a href="/">Back to TFLIX</a>
+        <h2>${esc(t('nothingTitle'))}</h2>
+        <p>${esc(t('nothingDesc'))}</p>
+        <a href="/">${esc(t('fatalLink'))}</a>
       </div>`;
     document.title = 'TFLIX';
     return;
@@ -627,7 +760,7 @@ $('back-btn').addEventListener('click', () => {
 
   function getSections() {
     const secs = [];
-    const header = [$('back-btn'), $('support-btn')].filter(vis);
+    const header = [$('back-btn'), $('lang-btn'), $('support-btn')].filter(vis);
     if (header.length) secs.push({ items: header });
     const tv = $('tv-panel');
     if (tv && !tv.hidden) {

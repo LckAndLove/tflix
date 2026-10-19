@@ -22,6 +22,25 @@
     return null;
   };
 
+  // Intercept fetch to api.themoviedb.org to ensure language parameter matches user preference
+  var origFetch = window.fetch;
+  if (origFetch) {
+    window.fetch = function (resource, init) {
+      if (typeof resource === 'string' && resource.indexOf('api.themoviedb.org') !== -1) {
+        try {
+          var lang = localStorage.getItem('tflix_lang') || ((navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en');
+          var tmdbLang = lang === 'zh' ? 'zh-CN' : 'en-US';
+          var url = new URL(resource);
+          if (!url.searchParams.has('language') || url.searchParams.get('language') !== tmdbLang) {
+            url.searchParams.set('language', tmdbLang);
+            resource = url.toString();
+          }
+        } catch (e) {}
+      }
+      return origFetch.apply(this, arguments);
+    };
+  }
+
   // Only inject DOM features into the TOP frame — never inside third-party stream embeds.
   if (window.top !== window.self) return;
 
@@ -208,8 +227,46 @@
     restore();
   }
 
+  function injectFallbackLangToggle() {
+    if (document.getElementById('lang-wrap') || document.getElementById('lang-btn') || document.getElementById('tauri-lang-toggle')) return;
+    var container = document.querySelector('.nav-right') || document.querySelector('header');
+    if (!container) return;
+
+    var curLang = localStorage.getItem('tflix_lang') || ((navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en');
+
+    var btn = document.createElement('button');
+    btn.id = 'tauri-lang-toggle';
+    btn.title = 'Language / 语言';
+    btn.style.cursor = 'pointer';
+    btn.style.display = 'inline-flex';
+    btn.style.alignItems = 'center';
+    btn.style.gap = '6px';
+    btn.style.padding = '0.45rem 0.8rem';
+    btn.style.borderRadius = '99px';
+    btn.style.background = 'rgba(255,255,255,0.06)';
+    btn.style.border = '1px solid rgba(255,255,255,0.12)';
+    btn.style.color = '#f4f4f7';
+    btn.style.fontSize = '0.8rem';
+    btn.style.fontWeight = '700';
+
+    btn.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>' + (curLang === 'zh' ? '中' : 'EN') + '</span>';
+
+    btn.addEventListener('click', function () {
+      var next = (curLang === 'zh' ? 'en' : 'zh');
+      localStorage.setItem('tflix_lang', next);
+      window.location.reload();
+    });
+
+    if (container.firstChild) {
+      container.insertBefore(btn, container.firstChild);
+    } else {
+      container.appendChild(btn);
+    }
+  }
+
   function initAll() {
     injectVersion();
+    injectFallbackLangToggle();
     initHistoryCapture();
   }
 

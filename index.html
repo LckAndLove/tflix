@@ -664,6 +664,22 @@
       <span class="s-name">Support</span>
     </a>
 
+    <div class="server-wrap" id="lang-wrap">
+      <button class="server-btn" id="lang-btn" title="Language / 语言">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="s-name" id="lang-label">EN</span>
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="server-menu" id="lang-menu">
+        <div class="server-menu-header" id="lang-menu-header">Language / 语言</div>
+        <div class="server-item lang-item" data-lang="en"><div class="s-dot"></div><span>English</span></div>
+        <div class="server-item lang-item" data-lang="zh"><div class="s-dot"></div><span>简体中文</span></div>
+      </div>
+    </div>
+
     <div class="server-wrap">
       <button class="server-btn" id="server-btn">
         <span class="s-live"></span>
@@ -671,7 +687,7 @@
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="server-menu" id="server-menu">
-        <div class="server-menu-header">Streaming Servers</div>
+        <div class="server-menu-header" id="server-menu-header">Streaming Servers</div>
       </div>
     </div>
   </div>
@@ -769,12 +785,113 @@ const SERVERS = [
 
 const CURRENT_YEAR = new Date().getFullYear();
 const CATEGORY_ROWS = [
-  { title: 'Popular Movies',      endpoint: '/movie/popular',   media: 'movie', anchor: 'movies' },
-  { title: 'Recently Digitally Released', endpoint: null,       media: 'movie', anchor: 'digital', isDigitalRow: true },
-  { title: 'Top Rated This Year', endpoint: `/discover/movie?sort_by=vote_average.desc&vote_count.gte=500&primary_release_year=${CURRENT_YEAR}`, media: 'movie' },
-  { title: 'Popular TV Shows',    endpoint: '/tv/popular',      media: 'tv',    anchor: 'tv' },
-  { title: 'Airing Today',        endpoint: '/tv/airing_today', media: 'tv',    anchor: 'airing' },
+  { key: 'popularMovies',   endpoint: '/movie/popular',   media: 'movie', anchor: 'movies' },
+  { key: 'recentlyDigital', endpoint: null,               media: 'movie', anchor: 'digital', isDigitalRow: true },
+  { key: 'topRated',        endpoint: `/discover/movie?sort_by=vote_average.desc&vote_count.gte=500&primary_release_year=${CURRENT_YEAR}`, media: 'movie' },
+  { key: 'popularTV',       endpoint: '/tv/popular',      media: 'tv',    anchor: 'tv' },
+  { key: 'airingToday',     endpoint: '/tv/airing_today', media: 'tv',    anchor: 'airing' },
 ];
+
+/* ─── I18N ─── */
+const LANG_STORAGE_KEY = 'tflix_lang';
+const I18N = {
+  en: {
+    langName: 'English',
+    langShort: 'EN',
+    home: 'Home',
+    trending: 'Trending',
+    movies: 'Movies',
+    tv: 'TV Shows',
+    searchPlaceholder: 'Search movies & TV shows…',
+    support: 'Support',
+    serversHeader: 'Streaming Servers',
+    langHeader: 'Language / 语言',
+    nowStreaming: 'Now streaming from %s',
+    all: 'All',
+    resultsFor: 'Results for',
+    titlesCount: '%s title',
+    titlesCountPlural: '%s titles',
+    noTitles: 'No titles found',
+    noTitlesDesc: 'Try a different search term or check your spelling.',
+    play: 'Play',
+    season: 'Season',
+    episode: 'Episode',
+    film: '🎬 Film',
+    series: '📺 Series',
+    badgeFilm: 'Film',
+    badgeSeries: 'Series',
+    badgeDigital: 'Digital',
+    digitalRelease: 'Digital release',
+    digitallyReleased: 'Digitally Released',
+    notDigitallyReleased: 'Not yet digitally released',
+    popularMovies: 'Popular Movies',
+    recentlyDigital: 'Recently Digitally Released',
+    digitalSubtitle: 'Sorted by release date, newest first',
+    topRated: 'Top Rated This Year',
+    popularTV: 'Popular TV Shows',
+    airingToday: 'Airing Today',
+    top10: 'Top 10 This Week',
+    trendingToday: 'Trending Today',
+    matchPct: '%s% Match',
+    tmdbLang: 'en-US',
+    switchedToast: 'Switched to English',
+    noDesc: 'No description available.',
+    ep: 'Ep',
+    loading: 'Loading…'
+  },
+  zh: {
+    langName: '简体中文',
+    langShort: '中',
+    home: '首页',
+    trending: '热门趋势',
+    movies: '电影',
+    tv: '电视剧',
+    searchPlaceholder: '搜索电影、电视剧…',
+    support: '技术支持',
+    serversHeader: '播放源服务器',
+    langHeader: '语言设置',
+    nowStreaming: '正在从 %s 播放',
+    all: '全部',
+    resultsFor: '搜索结果：',
+    titlesCount: '%s 部作品',
+    titlesCountPlural: '%s 部作品',
+    noTitles: '未找到相关影视',
+    noTitlesDesc: '请尝试其他关键词或检查拼写。',
+    play: '播放',
+    season: '季',
+    episode: '集',
+    film: '🎬 电影',
+    series: '📺 电视剧',
+    badgeFilm: '电影',
+    badgeSeries: '电视剧',
+    badgeDigital: '数字版',
+    digitalRelease: '数字版上线',
+    digitallyReleased: '已上线数字版',
+    notDigitallyReleased: '暂未上线数字版',
+    popularMovies: '热门电影',
+    recentlyDigital: '最新上线数字版',
+    digitalSubtitle: '按数字版上线时间排序',
+    topRated: '年度高分精选',
+    popularTV: '热门电视剧',
+    airingToday: '今日播出',
+    top10: '本周 Top 10 热门',
+    trendingToday: '今日热门',
+    matchPct: '%s% 匹配度',
+    tmdbLang: 'zh-CN',
+    switchedToast: '已切换为简体中文',
+    noDesc: '暂无中文简介。',
+    ep: '第 %s 集',
+    loading: '加载中…'
+  }
+};
+
+let currentLang = (() => {
+  const saved = localStorage.getItem(LANG_STORAGE_KEY);
+  if (saved && (saved === 'zh' || saved === 'en')) return saved;
+  return (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en';
+})();
+
+const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
 
 /* ─── STATE ─── */
 const STORAGE_KEY = 'tflix_server';
@@ -794,12 +911,14 @@ let heroIndex = 0;
 let heroTimer = null;
 
 /* digital release cache — keyed by movie id */
-const digitalCache = {};
+let digitalCache = {};
 
 /* ─── UTILS ─── */
 const $ = id => document.getElementById(id);
 const tmdb = async path => {
-  const r = await fetch(`${API_BASE}${path}`, { headers: HEADERS });
+  const sep = path.includes('?') ? '&' : '?';
+  const lang = t('tmdbLang');
+  const r = await fetch(`${API_BASE}${path}${sep}language=${lang}`, { headers: HEADERS });
   return r.json();
 };
 const poster   = (p, size = 'w342') => p ? `${IMG_BASE}${size}${p}` : null;
@@ -813,6 +932,9 @@ function fmtShortDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt)) return '';
+  if (currentLang === 'zh') {
+    return dt.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -879,6 +1001,114 @@ function updateActiveNav() {
 
 window.addEventListener('scroll', updateActiveNav, { passive: true });
 
+/* ─── LANGUAGE DROPDOWN & I18N ─── */
+const langMenu  = $('lang-menu');
+const langBtn   = $('lang-btn');
+const langLabel = $('lang-label');
+
+function applyTranslations() {
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  if (langLabel) langLabel.textContent = t('langShort');
+  const langHeader = $('lang-menu-header');
+  if (langHeader) langHeader.textContent = t('langHeader');
+  const srvHeader = $('server-menu-header');
+  if (srvHeader) srvHeader.textContent = t('serversHeader');
+
+  // Nav links
+  const navMap = { home: 'home', trending: 'trending', movies: 'movies', tv: 'tv' };
+  document.querySelectorAll('.nav-link').forEach(link => {
+    const key = navMap[link.dataset.nav];
+    if (key) link.textContent = t(key);
+  });
+
+  // Search placeholder
+  const searchInput = $('search');
+  if (searchInput) searchInput.placeholder = t('searchPlaceholder');
+
+  // Support button
+  const supText = $('support-btn')?.querySelector('.s-name');
+  if (supText) supText.textContent = t('support');
+
+  // Filter tabs
+  const tabMap = { all: 'all', movie: 'movies', tv: 'tv' };
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    const key = tabMap[tab.dataset.filter];
+    if (key) tab.textContent = t(key);
+  });
+
+  // Empty search state
+  const emptyH3 = document.querySelector('#search-empty h3');
+  const emptyP = document.querySelector('#search-empty p');
+  if (emptyH3) emptyH3.textContent = t('noTitles');
+  if (emptyP) emptyP.textContent = t('noTitlesDesc');
+
+  // Modal field labels
+  const labels = document.querySelectorAll('#tv-selectors .field-label');
+  if (labels[0]) labels[0].textContent = t('season');
+  if (labels[1]) labels[1].textContent = t('episode');
+  const watchBtn = $('modal-watch-btn');
+  if (watchBtn) {
+    watchBtn.innerHTML = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> ${t('play')}`;
+  }
+
+  // Active state in lang-menu
+  document.querySelectorAll('.lang-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.lang === currentLang);
+  });
+}
+
+async function changeLanguage(newLang) {
+  if (newLang === currentLang) return;
+  currentLang = newLang;
+  localStorage.setItem(LANG_STORAGE_KEY, newLang);
+  applyTranslations();
+  toast(t('switchedToast'));
+
+  // Reset caches
+  genreMap = {};
+  digitalCache = {};
+  tvDetails = {};
+
+  // Reload genres
+  await loadGenres();
+
+  // Reload hero
+  await loadHero();
+
+  // Reload rows
+  $('rows-container').innerHTML = '';
+  loadTop10();
+  for (const cfg of CATEGORY_ROWS) loadRow(cfg);
+
+  // If search is active, refresh search results in the new language
+  const q = $('search')?.value.trim();
+  if ($('search-results-section').classList.contains('visible') && q) {
+    doSearch(q);
+  }
+
+  // If modal is currently open, refresh its content in the new language
+  if (currentModalItem && $('modal-backdrop').classList.contains('open')) {
+    try {
+      const updated = await tmdb(`/${currentModalItem.media_type}/${currentModalItem.id}`);
+      if (updated) openModal({ ...currentModalItem, ...updated });
+    } catch {}
+  }
+}
+
+document.querySelectorAll('.lang-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const lang = el.dataset.lang;
+    langMenu.classList.remove('open');
+    changeLanguage(lang);
+  });
+});
+
+langBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  serverMenu.classList.remove('open');
+  langMenu.classList.toggle('open');
+});
+
 /* ─── SERVER DROPDOWN ─── */
 const serverMenu  = $('server-menu');
 const serverBtn   = $('server-btn');
@@ -896,7 +1126,7 @@ SERVERS.forEach(s => {
     document.querySelectorAll('.server-item').forEach(i => i.classList.remove('active'));
     el.classList.add('active');
     serverMenu.classList.remove('open');
-    toast(`Now streaming from ${s.name}`);
+    toast(t('nowStreaming').replace('%s', s.name));
   });
   serverMenu.appendChild(el);
 });
@@ -904,8 +1134,16 @@ SERVERS.forEach(s => {
 const savedServer = SERVERS.find(s => s.id === currentServer) || SERVERS[0];
 serverLabel.textContent = savedServer.name;
 
-serverBtn.addEventListener('click', e => { e.stopPropagation(); serverMenu.classList.toggle('open'); });
-document.addEventListener('click', () => serverMenu.classList.remove('open'));
+serverBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  langMenu.classList.remove('open');
+  serverMenu.classList.toggle('open');
+});
+
+document.addEventListener('click', () => {
+  serverMenu.classList.remove('open');
+  langMenu.classList.remove('open');
+});
 
 /* ─── PLAYER URL ─── */
 function playerUrl(item, season = 1, episode = 1) {
@@ -955,15 +1193,15 @@ function makeCard(item, { drDate = null } = {}) {
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `
-    <span class="card-badge ${isMovie ? 'movie' : 'tv'}">${isMovie ? 'Film' : 'Series'}</span>
-    ${showDrBadge ? `<span class="card-dr-badge"><span class="card-dr-dot"></span>Digital</span>` : ''}
+    <span class="card-badge ${isMovie ? 'movie' : 'tv'}">${isMovie ? t('badgeFilm') : t('badgeSeries')}</span>
+    ${showDrBadge ? `<span class="card-dr-badge"><span class="card-dr-dot"></span>${t('badgeDigital')}</span>` : ''}
     ${imgSrc
       ? `<img class="card-poster" src="${imgSrc}" alt="${esc(title)}" loading="lazy" onerror="this.parentNode.replaceChild(makePlaceholder('${esc(title).replace(/'/g,"")}'),this)">`
       : `<div class="card-poster-placeholder"><span style="font-size:2rem">🎬</span><span>${esc(title)}</span></div>`}
     <div class="card-info">
       <div class="card-info-top">
         <span class="mini-play"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-        ${m ? `<span class="match">${m}% Match</span>` : ''}
+        ${m ? `<span class="match">${t('matchPct').replace('%s', m)}</span>` : ''}
       </div>
       <div class="card-info-title">${esc(title)}</div>
       <div class="card-info-meta">${year(date)} · ★ ${rating(item.vote_average)}</div>
@@ -986,10 +1224,13 @@ function buildRow(cfg, { top10 = false } = {}) {
   row.className = 'row';
   if (cfg.anchor) row.dataset.anchor = cfg.anchor;
 
+  const rowTitle = cfg.title || (cfg.key ? t(cfg.key) : '');
+  const rowSubtitle = cfg.subtitle || (cfg.isDigitalRow ? t('digitalSubtitle') : '');
+
   row.innerHTML = `
     <div class="row-head">
-      <h2 class="row-title">${esc(cfg.title)}</h2>
-      ${cfg.subtitle ? `<span class="row-subtitle">${esc(cfg.subtitle)}</span>` : ''}
+      <h2 class="row-title">${esc(rowTitle)}</h2>
+      ${rowSubtitle ? `<span class="row-subtitle">${esc(rowSubtitle)}</span>` : ''}
     </div>
     <div class="scroller-wrap">
       <button class="arrow left" aria-label="Scroll left"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
@@ -1098,7 +1339,7 @@ async function loadDigitalRow(cfg) {
 }
 
 async function loadTop10() {
-  const scroller = buildRow({ title: 'Top 10 This Week', anchor: 'trending' }, { top10: true });
+  const scroller = buildRow({ title: t('top10'), anchor: 'trending' }, { top10: true });
   try {
     const data = await tmdb('/trending/all/week');
     const items = (data.results || [])
@@ -1146,18 +1387,18 @@ async function loadHero() {
       slide.innerHTML = `
         <div class="hero-bg" style="background-image:url('${backdrop(item.backdrop_path, 'original')}')"></div>
         <div class="hero-content">
-          <div class="hero-badge"><span class="bolt">●</span> #${i + 1} Trending Today</div>
+          <div class="hero-badge"><span class="bolt">●</span> #${i + 1} ${t('trendingToday')}</div>
           <h1 class="hero-title">${esc(title)}</h1>
           <div class="hero-meta">
-            ${m ? `<span class="match">${m}% Match</span>` : ''}
+            ${m ? `<span class="match">${t('matchPct').replace('%s', m)}</span>` : ''}
             <span>${year(date)}</span>
-            <span class="chip">${isMovie ? 'FILM' : 'SERIES'}</span>
+            <span class="chip">${isMovie ? t('badgeFilm').toUpperCase() : t('badgeSeries').toUpperCase()}</span>
             <span>★ ${rating(item.vote_average)}</span>
           </div>
-          <p class="hero-overview">${esc(item.overview || 'No description available.')}</p>
+          <p class="hero-overview">${esc(item.overview || t('noDesc'))}</p>
           <div class="hero-actions">
             <button class="btn btn-primary hero-play">
-              <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Play
+              <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> ${t('play')}
             </button>
           </div>
         </div>`;
@@ -1223,11 +1464,11 @@ async function openModal(item) {
   const bg = backdrop(item.backdrop_path) || poster(item.poster_path, 'w780');
   $('modal-backdrop-img').style.backgroundImage = bg ? `url('${bg}')` : 'none';
 
-  $('modal-type').textContent  = isMovie ? '🎬 Film' : '📺 Series';
+  $('modal-type').textContent  = isMovie ? t('film') : t('series');
   $('modal-title').textContent = title;
 
   $('modal-meta').innerHTML = `
-    ${m ? `<span class="match">${m}% Match</span>` : ''}
+    ${m ? `<span class="match">${t('matchPct').replace('%s', m)}</span>` : ''}
     <span>${year(date)}</span>
     <span>★ ${rating(item.vote_average)}</span>
     ${item.original_language ? `<span class="chip">${esc(item.original_language.toUpperCase())}</span>` : ''}`;
@@ -1235,7 +1476,7 @@ async function openModal(item) {
   const genreNames = (item.genre_ids || []).map(id => genreMap[id]).filter(Boolean).slice(0, 4);
   $('modal-genres').innerHTML = genreNames.map(g => `<span class="genre-chip">${esc(g)}</span>`).join('');
 
-  $('modal-overview').textContent = item.overview || 'No description available.';
+  $('modal-overview').textContent = item.overview || t('noDesc');
 
   const tvSel = $('tv-selectors');
   const drEl  = $('modal-digital-release');
@@ -1279,7 +1520,7 @@ async function fetchDigitalReleaseBadge(movieId) {
 
     if (!found) {
       el.className = 'dr-none';
-      el.innerHTML = '<span class="dr-dot"></span>Not yet digitally released';
+      el.innerHTML = `<span class="dr-dot"></span>${t('notDigitallyReleased')}`;
       return;
     }
 
@@ -1289,11 +1530,10 @@ async function fetchDigitalReleaseBadge(movieId) {
 
     if (releaseDate > now) {
       el.className = 'dr-future';
-      el.innerHTML = `<span class="dr-dot"></span>Digital release · ${label}`;
+      el.innerHTML = `<span class="dr-dot"></span>${t('digitalRelease')} · ${label}`;
     } else {
       el.className = 'dr-available';
-      // CHANGE 1: show the date even when already released
-      el.innerHTML = `<span class="dr-dot"></span>Digitally Released · ${label}`;
+      el.innerHTML = `<span class="dr-dot"></span>${t('digitallyReleased')} · ${label}`;
     }
   } catch {
     el.className = ''; el.innerHTML = '';
@@ -1305,23 +1545,25 @@ const seasonCache = {};
 async function loadTvSeasons(id) {
   const seasonSel  = $('season-select');
   const episodeSel = $('episode-select');
-  seasonSel.innerHTML  = '<option>Loading…</option>';
+  seasonSel.innerHTML  = `<option>${t('loading')}</option>`;
   episodeSel.innerHTML = '<option>—</option>';
 
   try {
     let details = tvDetails[id];
     if (!details) { details = await tmdb(`/tv/${id}`); tvDetails[id] = details; }
     const seasons = (details.seasons || []).filter(s => s.season_number > 0);
+    const sWord = t('season');
+    const epWord = currentLang === 'zh' ? '集' : 'ep';
     seasonSel.innerHTML = seasons.map(s =>
-      `<option value="${s.season_number}" data-eps="${s.episode_count}">Season ${s.season_number} &nbsp;·&nbsp; ${s.episode_count} ep</option>`
-    ).join('') || '<option value="1">Season 1</option>';
+      `<option value="${s.season_number}" data-eps="${s.episode_count}">${sWord} ${s.season_number} &nbsp;·&nbsp; ${s.episode_count} ${epWord}</option>`
+    ).join('') || `<option value="1">${sWord} 1</option>`;
 
     seasonSel.replaceWith(seasonSel.cloneNode(true));
     const freshSel = $('season-select');
     freshSel.addEventListener('change', () => updateEpisodes(id));
     await updateEpisodes(id);
   } catch {
-    seasonSel.innerHTML = '<option value="1">Season 1</option>';
+    seasonSel.innerHTML = `<option value="1">${t('season')} 1</option>`;
     await updateEpisodes(id);
   }
 }
@@ -1330,6 +1572,9 @@ function fmtDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt)) return '';
+  if (currentLang === 'zh') {
+    return dt.toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' });
+  }
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -1339,7 +1584,7 @@ async function updateEpisodes(tvId) {
   const opt = sel.options[sel.selectedIndex];
   const eps = parseInt(opt?.dataset?.eps || 24);
   const epSel = $('episode-select');
-  epSel.innerHTML = '<option>Loading…</option>';
+  epSel.innerHTML = `<option>${t('loading')}</option>`;
 
   const cacheKey = `${tvId}-${seasonNum}`;
   try {
@@ -1350,11 +1595,16 @@ async function updateEpisodes(tvId) {
       epSel.innerHTML = episodes.map(ep => {
         const date = fmtDate(ep.air_date);
         const dateStr = date ? `  &nbsp;·&nbsp;  ${date}` : '';
-        return `<option value="${ep.episode_number}">Ep ${ep.episode_number}${dateStr}</option>`;
+        const epPrefix = currentLang === 'zh' ? `第 ${ep.episode_number} 集` : `Ep ${ep.episode_number}`;
+        const epTitle = (ep.name && ep.name !== `Episode ${ep.episode_number}` && ep.name !== `第 ${ep.episode_number} 集`) ? ` · ${esc(ep.name)}` : '';
+        return `<option value="${ep.episode_number}">${epPrefix}${epTitle}${dateStr}</option>`;
       }).join('');
     } else { throw new Error('no episodes'); }
   } catch {
-    epSel.innerHTML = Array.from({ length: eps }, (_, i) => `<option value="${i+1}">Episode ${i+1}</option>`).join('');
+    epSel.innerHTML = Array.from({ length: eps }, (_, i) => {
+      const epLabel = currentLang === 'zh' ? `第 ${i+1} 集` : `Episode ${i+1}`;
+      return `<option value="${i+1}">${epLabel}</option>`;
+    }).join('');
   }
 }
 
@@ -1475,7 +1725,8 @@ function renderSearchResults() {
     ? searchResults
     : searchResults.filter(r => r.media_type === currentFilter);
 
-  $('search-count').textContent = `${filtered.length} title${filtered.length !== 1 ? 's' : ''}`;
+  const countFmt = filtered.length === 1 ? t('titlesCount') : t('titlesCountPlural');
+  $('search-count').textContent = countFmt.replace('%s', filtered.length);
   if (!filtered.length) { $('search-empty').style.display = 'block'; return; }
   $('search-empty').style.display = 'none';
   filtered.forEach(item => grid.appendChild(makeCard(item)));
@@ -1492,6 +1743,7 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
 
 /* ─── INIT ─── */
 (async function init() {
+  applyTranslations();
   loadGenres();
   await loadHero();
   loadTop10();
@@ -1546,13 +1798,16 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
       s.push({ key: null, items: [$('modal-watch-btn')] });
       return s;
     }
+    // Lang dropdown open → trap focus
+    if (langMenu.classList.contains('open'))
+      return [...langMenu.querySelectorAll('.lang-item')].map(i => ({ key: null, items: [i] }));
     // Server dropdown open → trap focus on its items (one per "section",
     // so Up/Down walks the vertical list)
     if (serverMenu.classList.contains('open'))
       return [...serverMenu.querySelectorAll('.server-item')].map(i => ({ key: null, items: [i] }));
 
     const secs = [];
-    const header = [...document.querySelectorAll('.nav-link'), searchInput, $('support-btn'), serverBtn].filter(vis);
+    const header = [...document.querySelectorAll('.nav-link'), searchInput, $('support-btn'), langBtn, serverBtn].filter(vis);
     if (header.length) secs.push({ key: 'header', items: header });
 
     if ($('search-results-section').classList.contains('visible')) {
@@ -1641,7 +1896,8 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
     const typing = ae && ae.tagName === 'INPUT';
 
     if (k === 'Escape') {
-      if (serverMenu.classList.contains('open')) { serverMenu.classList.remove('open'); setFocus(serverBtn, false); }
+      if (langMenu.classList.contains('open')) { langMenu.classList.remove('open'); setFocus(langBtn, false); }
+      else if (serverMenu.classList.contains('open')) { serverMenu.classList.remove('open'); setFocus(serverBtn, false); }
       else if (typing) ae.blur();
       return;                       // modal Escape: the page's own handler closes it
     }
@@ -1664,8 +1920,11 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
       const el = cur;
       el.click();
       requestAnimationFrame(() => {
-        if (serverMenu.classList.contains('open'))
+        if (langMenu.classList.contains('open'))
+          setFocus(langMenu.querySelector('.lang-item.active') || langMenu.querySelector('.lang-item'), false);
+        else if (serverMenu.classList.contains('open'))
           setFocus(serverMenu.querySelector('.server-item.active') || serverMenu.querySelector('.server-item'), false);
+        else if (el.classList.contains('lang-item')) setFocus(langBtn, false);
         else if (el.classList.contains('server-item')) setFocus(serverBtn, false);
         else if (el.classList.contains('nav-link') && el.dataset.nav && el.dataset.nav !== 'home') {
           // Jump straight into the row the nav link scrolled to
