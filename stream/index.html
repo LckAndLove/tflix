@@ -276,7 +276,7 @@
     <div class="player-col">
       <div class="player-wrap" id="player-wrap">
         <div class="player-loading" id="player-loading"><div class="spinner"></div></div>
-        <iframe id="player" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
+        <iframe id="player" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
       </div>
     </div>
 
@@ -450,6 +450,9 @@ function loadPlayer() {
   const old = $('player');
   const frame = document.createElement('iframe');
   frame.id = 'player';
+  // Allow embedded players, but keep ads from opening windows or replacing
+  // the app's top frame. This restriction also applies to nested iframes.
+  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   frame.allowFullscreen = true;
   // Use "*" so the fullscreen permission cascades to nested cross-origin
   // iframes (Xayah / Ekko load the real player inside a second iframe).

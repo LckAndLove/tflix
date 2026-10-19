@@ -103,11 +103,13 @@ pub fn run() {
                         let _ = app_handle.opener().open_url(url_str, None::<&str>);
                         return false;
                     }
-                    // Pin top frame to TFLIX origin (block external popups/ad redirects)
+                    // WKWebView also reports iframe navigations here. HTTPS embeds
+                    // and their nested player redirects must be allowed; the player
+                    // iframe sandbox prevents popups and top-frame navigation.
                     let is_app = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
                         || (matches!(url.scheme(), "http" | "https")
                             && url.host_str() == Some("tauri.localhost"));
-                    if !is_app {
+                    if !is_app && url.scheme() != "https" {
                         return false;
                     }
                     true
