@@ -516,8 +516,10 @@ function applyTranslations() {
   if (selLabels[1]) selLabels[1].textContent = t('episode');
   const nextSpan = $('nextep-btn')?.querySelector('span');
   if (nextSpan) nextSpan.textContent = t('nextEp');
-  updateNextBtn();
-  buildServers();
+  if (state) {
+    updateNextBtn();
+    buildServers();
+  }
 }
 
 async function changeLanguage(newLang) {
@@ -660,7 +662,7 @@ function computeNext() {
 
 function updateNextBtn() {
   const btn = $('nextep-btn');
-  const next = computeNext();
+  const next = state?.type === 'tv' ? computeNext() : null;
   btn.disabled = !next;
   btn.title = next ? t('nextEpTitle').replace('%s', next.season).replace('%s', next.episode) : t('noNextEp');
 }
@@ -727,8 +729,8 @@ $('back-btn').addEventListener('click', () => {
 
 /* ─── INIT ─── */
 (async function init() {
-  applyTranslations();
   state = readParams();
+  applyTranslations();
   if (!state) {
     $('main').innerHTML = `
       <div class="fatal">
@@ -740,7 +742,6 @@ $('back-btn').addEventListener('click', () => {
     return;
   }
 
-  buildServers();
   loadPlayer();              // start streaming immediately
 
   if (state.type === 'tv') await setupTv();
