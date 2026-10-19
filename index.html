@@ -1005,9 +1005,20 @@ const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I1
 
 /* ─── STATE ─── */
 const STORAGE_KEY = 'tflix_server';
+const SERVER_DEFAULT_MIGRATION_KEY = 'tflix_server_default_migrated';
+const DEFAULT_SERVER = 4; // Ekko (CineSrc) is the verified working source.
 let currentServer = (() => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  return saved ? parseInt(saved, 10) : 1;
+  // Older builds defaulted to Rakan/Bard, both of which can hang on some
+  // episodes. Move those old defaults once; preserve any later user choice.
+  if (localStorage.getItem(SERVER_DEFAULT_MIGRATION_KEY) !== 'ekko') {
+    const previous = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+    if (!previous || previous === 1 || previous === 2) {
+      localStorage.setItem(STORAGE_KEY, String(DEFAULT_SERVER));
+    }
+    localStorage.setItem(SERVER_DEFAULT_MIGRATION_KEY, 'ekko');
+  }
+  const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+  return saved || DEFAULT_SERVER;
 })();
 let currentFilter = 'all';
 let searchResults = [];

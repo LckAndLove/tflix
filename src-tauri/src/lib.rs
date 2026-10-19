@@ -3,9 +3,15 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use serde::Serialize;
 
+mod player_bridge;
+
 const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 
 const INIT_SCRIPT: &str = include_str!("init.js");
+const PLAYER_COMPAT_SCRIPT: &str = include_str!("player_compat.js");
+const SUBTITLE_LAYOUT_SCRIPT: &str = include_str!("subtitle_layout.js");
+const SUBTITLE_COMPAT_SCRIPT: &str = include_str!("subtitle_compat.js");
+const PLAYER_MONITOR_SCRIPT: &str = include_str!("player_monitor.js");
 
 #[derive(Serialize, Clone)]
 pub struct UpdateInfo {
@@ -88,14 +94,25 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![check_update, install_update, open_external])
         .setup(|app| {
             let app_handle = app.handle().clone();
+            let player_origin = player_bridge::start()?;
+            let bridge_origin = tauri::Url::parse(&player_origin)?.origin();
+            let player_script = format!(
+                "window.__TFLIX_PLAYER_ORIGIN__ = {};",
+                serde_json::to_string(&player_origin)?
+            );
             let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("TFLIX")
                 .inner_size(1400.0, 880.0)
                 .min_inner_size(940.0, 600.0)
                 .center()
                 .resizable(true)
-                .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
+                .initialization_script(&player_script)
                 .initialization_script(INIT_SCRIPT)
+                .initialization_script_for_all_frames(PLAYER_COMPAT_SCRIPT)
+                .initialization_script_for_all_frames(SUBTITLE_COMPAT_SCRIPT)
+                .initialization_script_for_all_frames(SUBTITLE_LAYOUT_SCRIPT)
+                .initialization_script_for_all_frames(PLAYER_MONITOR_SCRIPT)
+                .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
                 .on_navigation(move |url| {
                     let url_str = url.as_str();
                     // Intercept Support link and open in external system browser
@@ -109,7 +126,8 @@ pub fn run() {
                     let is_app = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
                         || (matches!(url.scheme(), "http" | "https")
                             && url.host_str() == Some("tauri.localhost"));
-                    if !is_app && url.scheme() != "https" {
+                    let is_player_bridge = url.origin() == bridge_origin;
+                    if !is_app && !is_player_bridge && url.scheme() != "https" {
                         return false;
                     }
                     true

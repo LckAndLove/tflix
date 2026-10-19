@@ -119,19 +119,16 @@
     /* ─── LAYOUT ─── */
     main {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      grid-template-rows: auto auto;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
       gap: clamp(1rem, 2.5vw, 1.8rem);
       padding: clamp(1rem, 3vw, 1.8rem) var(--gutter) 3rem;
       max-width: 1700px; margin: 0 auto;
       align-items: start;
     }
 
-    .player-col { min-width: 0; grid-column: 1; grid-row: 1 / span 2; }
-    #tv-panel { grid-column: 2; grid-row: 1; }
-    #servers-panel { grid-column: 2; grid-row: 2; }
-    #tv-panel[hidden] ~ #servers-panel,
-    #tv-panel[hidden] + #servers-panel { grid-row: 1; }
+    .player-col { min-width: 0; grid-column: 1; grid-row: 1; }
+    .controls-col { min-width: 0; grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; }
+    #tv-panel[hidden] { display: none; }
 
     .player-wrap {
       position: relative; width: 100%; aspect-ratio: 16/9;
@@ -191,21 +188,46 @@
     .nextep-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Servers */
-    .server-grid { display: flex; flex-direction: column; gap: 0.55rem; }
+    .server-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
     .server-card {
-      display: flex; align-items: center; gap: 0.75rem; text-align: left;
-      padding: 0.7rem 0.85rem; border: 1px solid var(--line); border-radius: var(--radius);
+      display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; gap: 0 0.55rem; text-align: left;
+      min-height: 68px; padding: 0.55rem 0.65rem; border: 1px solid var(--line); border-radius: var(--radius);
       background: var(--card); color: var(--text); cursor: pointer;
       transition: background .18s, border-color .18s, transform .15s var(--ease);
     }
     .server-card:hover { background: var(--card-h); border-color: rgba(255,255,255,0.18); transform: translateY(-1px); }
     .server-card.selected { border-color: var(--accent); background: var(--accent-soft); }
     .s-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: .18s; }
-    .server-card.selected .s-dot { background: var(--accent); box-shadow: 0 0 9px var(--accent); }
-    .server-card .s-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-    .server-card .s-name { font-size: 0.92rem; font-weight: 700; }
-    .server-card .s-note { font-size: 0.72rem; color: var(--muted); line-height: 1.25; }
+    .server-card .s-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.2rem 0.35rem; min-width: 0; }
+    .server-card .s-name { font-size: 0.88rem; font-weight: 700; }
+    .server-card .s-note { grid-column: 1 / -1; font-size: 0.66rem; color: var(--muted); line-height: 1.2; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
     .server-card.selected .s-name { color: #fff; }
+    .server-card[data-status="checking"] .s-dot { background: #f5b942; box-shadow: 0 0 8px rgba(245,185,66,.55); animation: pulse .9s ease-in-out infinite alternate; }
+    .server-card[data-status="available"] .s-dot,
+    .server-card[data-status="playing"] .s-dot { background: var(--green); box-shadow: 0 0 8px rgba(74,209,126,.55); }
+    .server-card[data-status="failed"] .s-dot { background: #ef5961; }
+    .server-card .s-state { grid-column: 2; justify-self: start; color: var(--muted); font-size: .62rem; line-height: 1; }
+    .server-card[data-status="checking"] .s-state { color: #f5b942; }
+    .server-card[data-status="available"] .s-state,
+    .server-card[data-status="playing"] .s-state { color: var(--green); }
+    .server-card[data-status="failed"] .s-state { color: #ef7379; }
+    @keyframes pulse { to { opacity: .45; } }
+    .source-health { display: flex; align-items: center; justify-content: space-between; gap: .6rem; min-height: 38px; margin: -.25rem 0 .75rem; }
+    .source-health-copy { display: flex; align-items: center; gap: .5rem; min-width: 0; color: var(--muted); font-size: .75rem; line-height: 1.25; }
+    .source-health[data-state="playing"] .source-health-copy,
+    .source-health[data-state="available"] .source-health-copy { color: var(--green); }
+    .source-health[data-state="switching"] .source-health-copy,
+    .source-health[data-state="checking"] .source-health-copy { color: #f5b942; }
+    .source-health[data-state="failed"] .source-health-copy { color: #ef7379; }
+    .source-health-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--muted); }
+    .source-health[data-state="checking"] .source-health-dot,
+    .source-health[data-state="switching"] .source-health-dot { background: #f5b942; animation: pulse .9s ease-in-out infinite alternate; }
+    .source-health[data-state="playing"] .source-health-dot,
+    .source-health[data-state="available"] .source-health-dot { background: var(--green); }
+    .source-health[data-state="failed"] .source-health-dot { background: #ef5961; }
+    .retry-source-btn { flex: 0 0 auto; padding: .4rem .65rem; border: 1px solid rgba(229,9,20,.45); border-radius: 7px; background: var(--accent-soft); color: var(--text); font-size: .68rem; font-weight: 700; cursor: pointer; }
+    .retry-source-btn[hidden] { display: none; }
+    .retry-source-btn:hover { background: rgba(229,9,20,.28); }
 
     /* Toast */
     #toast {
@@ -241,13 +263,17 @@
     /* ─── RESPONSIVE ─── */
     @media (max-width: 1200px) {
       main { display: flex; flex-direction: column; }
-      .player-col    { grid-column: unset; grid-row: unset; width: 100%; order: 1; }
-      #tv-panel      { grid-column: unset; grid-row: unset; width: 100%; order: 0; }
-      #servers-panel { grid-column: unset; grid-row: unset; width: 100%; order: 2; }
+      .player-col { width: 100%; order: 0; }
+      .controls-col { width: 100%; order: 1; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; }
+      #tv-panel[hidden] ~ #servers-panel { grid-column: 1 / -1; }
     }
     @media (max-width: 560px) {
       .logo { font-size: 1.3rem; }
       .now-title { font-size: 0.85rem; }
+      .controls-col { display: grid; grid-template-columns: 1fr; }
+      .server-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .selectors { gap: .55rem; }
+      .panel { padding: .9rem; }
     }
   </style>
 </head>
@@ -280,26 +306,32 @@
       </div>
     </div>
 
-    <div class="panel" id="tv-panel" hidden>
-      <div class="selectors">
-        <div>
-          <div class="field-label">Season</div>
-          <select id="season-select" class="sel"></select>
+    <div class="controls-col">
+      <div class="panel" id="tv-panel" hidden>
+        <div class="selectors">
+          <div>
+            <div class="field-label">Season</div>
+            <select id="season-select" class="sel"></select>
+          </div>
+          <div>
+            <div class="field-label">Episode</div>
+            <select id="episode-select" class="sel"></select>
+          </div>
         </div>
-        <div>
-          <div class="field-label">Episode</div>
-          <select id="episode-select" class="sel"></select>
-        </div>
+        <button class="nextep-btn" id="nextep-btn">
+          <span>Next Episode</span>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l11-7zM18 5h2v14h-2z"/></svg>
+        </button>
       </div>
-      <button class="nextep-btn" id="nextep-btn">
-        <span>Next Episode</span>
-        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l11-7zM18 5h2v14h-2z"/></svg>
-      </button>
-    </div>
 
-    <div class="panel" id="servers-panel">
-      <div class="panel-title">Streaming Servers</div>
-      <div class="server-grid" id="server-grid"></div>
+      <div class="panel" id="servers-panel">
+        <div class="panel-title">Streaming Servers</div>
+        <div class="source-health" id="source-health" data-state="checking" role="status" aria-live="polite">
+          <div class="source-health-copy"><span class="source-health-dot"></span><span id="source-health-text">Checking source…</span></div>
+          <button class="retry-source-btn" id="retry-source-btn" type="button">Auto try</button>
+        </div>
+        <div class="server-grid" id="server-grid"></div>
+      </div>
     </div>
   </main>
 
@@ -331,6 +363,23 @@ const I18N = {
     nextEp: 'Next Episode',
     nextEpTitle: 'Next: S%s E%s',
     noNextEp: 'No next episode',
+    sourceManual: 'Automatic detection is unavailable here · select a source manually',
+    sourceSelectedLabel: 'Selected',
+    sourceChecking: 'Loading %s · waiting up to 90 seconds…',
+    sourceReady: 'Video found on %s · waiting to play',
+    sourcePlaying: 'Playing on %s',
+    sourceError: '%s encountered a playback error · trying another source',
+    sourceSwitching: '%s did not start · trying %s',
+    sourceNotFound: 'No source started · tried all servers',
+    sourceRetry: 'Auto try',
+    sourceStop: 'Stop trying',
+    sourceStopped: 'Automatic switching stopped · keeping %s',
+    sourceRecovering: '%s encountered an error · waiting 12 seconds for recovery',
+    sourceCheckingLabel: 'Checking',
+    sourceReadyLabel: 'Video found',
+    sourcePlayingLabel: 'Playing',
+    sourceFailedLabel: 'No video',
+    sourceUntestedLabel: 'Not checked',
     loading: 'Loading…',
     movieFallback: 'Movie',
     seriesFallback: 'Series',
@@ -352,6 +401,23 @@ const I18N = {
     nextEp: '下一集',
     nextEpTitle: '下一集：第 %s 季 第 %s 集',
     noNextEp: '没有下一集',
+    sourceManual: '当前平台暂不支持自动检测，请手动选择播放源',
+    sourceSelectedLabel: '已选择',
+    sourceChecking: '正在加载 %s，最多等待 90 秒…',
+    sourceReady: '%s 找到视频 · 等待开始播放',
+    sourcePlaying: '正在播放 · %s',
+    sourceError: '%s 播放解码失败，正在尝试其他源',
+    sourceSwitching: '%s 没有开始播放，正在尝试 %s',
+    sourceNotFound: '已尝试全部播放源，暂未找到可播放视频',
+    sourceRetry: '自动试源',
+    sourceStop: '停止试源',
+    sourceStopped: '已停止自动切源，保留 %s',
+    sourceRecovering: '%s 出现异常，等待 12 秒尝试恢复',
+    sourceCheckingLabel: '检测中',
+    sourceReadyLabel: '找到视频',
+    sourcePlayingLabel: '正在播放',
+    sourceFailedLabel: '未出画面',
+    sourceUntestedLabel: '尚未检测',
     loading: '加载中…',
     movieFallback: '电影',
     seriesFallback: '电视剧',
@@ -392,6 +458,10 @@ const serverUrlResolvers = {
   6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
 };
 
+const AUTO_SOURCE_ORDER = [4, 5, 6, 1, 2, 3];
+const SOURCE_CHECK_TIMEOUT_MS = 90000;
+const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
+
 /* ─── STATE ─── */
 const $ = id => document.getElementById(id);
 const tmdb = async path => {
@@ -405,6 +475,13 @@ const tmdb = async path => {
 let state = null;          // { type, id, season, episode, server, title }
 let tvData = null;         // /tv/{id} details
 const seasonCache = {};    // cached season episode lists
+let sourceStatuses = {};
+let sourceSequence = [];
+let sourceSequenceIndex = 0;
+let sourceCheckTimer = null;
+let playerMediaDetected = false;
+let autoTryEnabled = Boolean(window.__TFLIX_PLAYER_ORIGIN__);
+let sourceRecoveryTimer = null;
 
 /* ─── PARAMS ─── */
 function readParams() {
@@ -416,7 +493,7 @@ function readParams() {
   let server = parseInt(p.get('server'), 10);
   if (!server || !serverUrlResolvers[server]) {
     const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-    server = (saved && serverUrlResolvers[saved]) ? saved : 1;
+    server = (saved && serverUrlResolvers[saved]) ? saved : 4;
   }
 
   const out = { type, id, server };
@@ -437,10 +514,27 @@ function syncUrl() {
 }
 
 /* ─── PLAYER ─── */
-function loadPlayer() {
+function loadPlayer(continueAutoTry = false) {
+  clearTimeout(sourceRecoveryTimer);
+  sourceRecoveryTimer = null;
   const src = serverUrlResolvers[state.server](state);
   const loader = $('player-loading');
   loader.classList.remove('hide');
+
+  if (!continueAutoTry) {
+    clearTimeout(sourceCheckTimer);
+    sourceStatuses = {};
+    sourceSequence = [state.server, ...AUTO_SOURCE_ORDER.filter(id => id !== state.server)];
+    sourceSequenceIndex = 0;
+    playerMediaDetected = false;
+  }
+  playerMediaDetected = false;
+  const canDetect = Boolean(window.__TFLIX_PLAYER_ORIGIN__);
+  $('retry-source-btn').hidden = !canDetect;
+  sourceStatuses[state.server] = canDetect ? 'checking' : 'selected';
+  updateSourceStatus(canDetect ? 'checking' : 'manual', canDetect
+    ? t(autoTryEnabled ? 'sourceChecking' : 'sourceStopped').replace('%s', serverName(state.server)) : t('sourceManual'));
+  updateServerCards();
 
   // Recreate the iframe on every load so the Permissions Policy
   // (allow="fullscreen; ...") is re-applied for the new origin.
@@ -450,8 +544,7 @@ function loadPlayer() {
   const old = $('player');
   const frame = document.createElement('iframe');
   frame.id = 'player';
-  // Allow embedded players, but keep ads from opening windows or replacing
-  // the app's top frame. This restriction also applies to nested iframes.
+  // Keep third-party frames from replacing the app or opening popups.
   frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   frame.allowFullscreen = true;
   // Use "*" so the fullscreen permission cascades to nested cross-origin
@@ -460,13 +553,131 @@ function loadPlayer() {
   frame.referrerPolicy = 'origin';
   frame.onload = () => loader.classList.add('hide');
   // Use replace so iframe loads don't pollute the browser history stack
-  frame.src = src;
+  // Desktop custom protocols cannot send an HTTP Referer to embed providers.
+  // The loopback wrapper supplies one without moving the app or its storage.
+  frame.src = window.__TFLIX_PLAYER_ORIGIN__
+    ? `${window.__TFLIX_PLAYER_ORIGIN__}?src=${encodeURIComponent(src)}`
+    : src;
   old.replaceWith(frame);
+
+  clearTimeout(sourceCheckTimer);
+  if (window.__TFLIX_PLAYER_ORIGIN__ && autoTryEnabled) {
+    sourceCheckTimer = setTimeout(() => {
+      if (!playerMediaDetected) tryNextSource();
+    }, SOURCE_CHECK_TIMEOUT_MS);
+  }
 
   setTimeout(() => loader.classList.add('hide'), 4000); // fail-safe
   syncUrl();
   if (state.title) updateTitleBar();
 }
+
+function serverName(id) { return SERVERS.find(server => server.id === id)?.name || `#${id}`; }
+
+function updateSourceStatus(status, message) {
+  const region = $('source-health');
+  const label = $('source-health-text');
+  if (!region || !label) return;
+  region.dataset.state = status;
+  label.textContent = message;
+  $('retry-source-btn').textContent = t(autoTryEnabled ? 'sourceStop' : 'sourceRetry');
+}
+
+function updateServerCards() {
+  document.querySelectorAll('.server-card').forEach(card => {
+    const id = Number(card.dataset.id);
+    const status = sourceStatuses[id] || 'unknown';
+    card.dataset.status = status;
+    const label = card.querySelector('.s-state');
+    if (!label) return;
+    const labels = {
+      selected: t('sourceSelectedLabel'),
+      unknown: t('sourceUntestedLabel'),
+      checking: t('sourceCheckingLabel'),
+      available: t('sourceReadyLabel'),
+      playing: t('sourcePlayingLabel'),
+      failed: t('sourceFailedLabel')
+    };
+    label.textContent = labels[status];
+  });
+}
+
+function tryNextSource() {
+  if (!state || playerMediaDetected || !autoTryEnabled) return;
+  clearTimeout(sourceCheckTimer);
+  sourceStatuses[state.server] = 'failed';
+  sourceSequenceIndex += 1;
+  const next = sourceSequence[sourceSequenceIndex];
+  if (!next) {
+    updateServerCards();
+    updateSourceStatus('failed', t('sourceNotFound'));
+    return;
+  }
+  const previous = serverName(state.server);
+  state.server = next;
+  document.querySelectorAll('.server-card').forEach(card => card.classList.toggle('selected', Number(card.dataset.id) === next));
+  updateServerCards();
+  updateSourceStatus('switching', t('sourceSwitching').replace('%s', previous).replace('%s', serverName(next)));
+  toast(t('sourceSwitching').replace('%s', previous).replace('%s', serverName(next)));
+  loadPlayer(true);
+}
+
+function onPlayerMediaEvent(event) {
+  if (!event.data || !['tflix:media-ready', 'tflix:media-playing', 'tflix:media-error'].includes(event.data.type)) return;
+  if (!isCurrentPlayerFrame(event.source)) return;
+  if (event.data.type === 'tflix:media-error') {
+    if (!autoTryEnabled || sourceRecoveryTimer) return;
+    const failedServer = state.server;
+    // Early error placeholders must not shorten the initial loading window.
+    if (!playerMediaDetected) return;
+    clearTimeout(sourceCheckTimer);
+    updateSourceStatus('switching', t('sourceRecovering').replace('%s', serverName(failedServer)));
+    sourceRecoveryTimer = setTimeout(() => {
+      sourceRecoveryTimer = null;
+      if (state.server !== failedServer || !autoTryEnabled) return;
+      playerMediaDetected = false;
+      tryNextSource();
+    }, SOURCE_RECOVERY_TIMEOUT_MS);
+    return;
+  }
+  clearTimeout(sourceRecoveryTimer);
+  sourceRecoveryTimer = null;
+  const playing = event.data.type === 'tflix:media-playing';
+  // A playable video may require a user gesture. Do not switch it away.
+  clearTimeout(sourceCheckTimer);
+  if (sourceStatuses[state.server] === 'playing' && !playing) return;
+  playerMediaDetected = true;
+  sourceStatuses[state.server] = playing ? 'playing' : 'available';
+  updateServerCards();
+  updateSourceStatus(playing ? 'playing' : 'available', t(playing ? 'sourcePlaying' : 'sourceReady').replace('%s', serverName(state.server)));
+}
+
+function isCurrentPlayerFrame(source) {
+  const root = $('player')?.contentWindow;
+  if (!root) return false;
+  const pending = [root];
+  const visited = new Set();
+  while (pending.length) {
+    const frame = pending.pop();
+    if (frame === source) return true;
+    if (!frame || visited.has(frame)) continue;
+    visited.add(frame);
+    try {
+      for (let i = 0; i < frame.frames.length; i++) pending.push(frame.frames[i]);
+    } catch {}
+  }
+  return false;
+}
+
+window.addEventListener('message', onPlayerMediaEvent);
+$('retry-source-btn').addEventListener('click', () => {
+  autoTryEnabled = !autoTryEnabled;
+  clearTimeout(sourceCheckTimer);
+  clearTimeout(sourceRecoveryTimer);
+  sourceRecoveryTimer = null;
+  if (autoTryEnabled) loadPlayer();
+  else updateSourceStatus('manual', t('sourceStopped').replace('%s', serverName(state.server)));
+});
 
 function updateTitleBar() {
   const base = state.title || (state.type === 'movie' ? t('movieFallback') : t('seriesFallback'));
@@ -492,10 +703,12 @@ function buildServers() {
       <span class="s-dot"></span>
       <span class="s-meta">
         <span class="s-name">${esc(s.name)}</span>
+        <span class="s-state"></span>
         <span class="s-note">${esc(note)}</span>
       </span>`;
     el.addEventListener('click', () => {
       if (s.id === state.server) return;
+      autoTryEnabled = false;
       state.server = s.id;
       document.querySelectorAll('.server-card').forEach(c => c.classList.toggle('selected', c === el));
       loadPlayer();
@@ -503,6 +716,7 @@ function buildServers() {
     });
     grid.appendChild(el);
   });
+  updateServerCards();
 }
 
 function applyTranslations() {
@@ -789,7 +1003,11 @@ $('back-btn').addEventListener('click', () => {
     // and scrolls; Enter on it is a harmless no-op click on the wrapper.
     const player = $('player-wrap');
     if (vis(player)) secs.push({ items: [player] });
-    document.querySelectorAll('.server-card').forEach(c => { if (vis(c)) secs.push({ items: [c] }); });
+    const retry = $('retry-source-btn');
+    if (vis(retry)) secs.push({ items: [retry] });
+    const cards = Array.from(document.querySelectorAll('.server-card')).filter(vis);
+    const columns = Math.max(1, getComputedStyle($('server-grid')).gridTemplateColumns.split(/\s+/).length);
+    for (let i = 0; i < cards.length; i += columns) secs.push({ items: cards.slice(i, i + columns) });
     return secs;
   }
 

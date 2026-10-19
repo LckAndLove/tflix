@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="referrer" content="origin">
+<style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}body{overflow:hidden;color:#ddd;font:16px system-ui}</style>
+</head><body><script>
+// A real HTTP document gives HTTPS embeds an HTTP Referer. Custom app
+// protocols cannot provide one, even with referrerPolicy="origin".
+const hosts = ['vixsrc.to', 'moviesapi.to', 'vidsrc.sh', 'cinesrc.st', 'vidfast.vc', 'vidlink.pro'];
+try {
+  const source = new URL(new URLSearchParams(location.search).get('src'));
+  if (source.protocol !== 'https:' || !hosts.includes(source.hostname) || source.username || source.password || source.port) throw new Error('Invalid player source');
+  const frame = document.createElement('iframe');
+  frame.referrerPolicy = 'origin';
+  frame.allowFullscreen = true;
+  frame.allow = 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *';
+  // Sandbox every provider, including those that refuse sandboxed embeds.
+  // The monitor skips incompatible providers rather than letting them navigate the app.
+  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  frame.src = source.href;
+  document.body.appendChild(frame);
+} catch {
+  document.body.textContent = '播放源地址无效 / Invalid player source';
+}
+// Suppress pop-up ads from the isolated provider frame.
+window.open = () => null;
+</script></body></html>
