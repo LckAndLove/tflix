@@ -17,12 +17,27 @@ android {
         versionName = "1.3.0"
     }
 
+    val keystoreFile = file("release.p12")
+    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")?.trim()
+    val keyAliasEnv = System.getenv("ANDROID_KEY_ALIAS")?.trim()
+    val keyPasswordEnv = System.getenv("ANDROID_KEY_PASSWORD")?.trim()
+
+    signingConfigs {
+        create("release") {
+            if (keystoreFile.exists() && !keystorePassword.isNullOrEmpty()) {
+                storeFile = keystoreFile
+                storeType = "PKCS12"
+                storePassword = keystorePassword
+                keyAlias = if (!keyAliasEnv.isNullOrEmpty()) keyAliasEnv else "tflix"
+                keyPassword = if (!keyPasswordEnv.isNullOrEmpty()) keyPasswordEnv else keystorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Debug-signed so the release APK is directly sideloadable.
-            // Replace with a real signing config before any Play Store upload.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -45,4 +60,54 @@ android {
                 "tflix-android.$suffix.apk"
         }
     }
+}
+
+// ─── Strict Release Validation ───
+// Release builds MUST be signed with the official release key; never silently fall back to debug.
+gradle.taskGraph.whenReady {
+    val isReleaseRequested = allTasks.any {
+        it.name.contains("Release", ignoreCase = true) && !it.name.contains("Lint", ignoreCase = true)
+    }
+    if (isReleaseRequested) {
+        val keystoreFile = file("release.p12")
+        val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")?.trim()
+        if (!keystoreFile.exists()) {
+            throw GradleException(
+                "Release build failed: 'release.p12' not found. " +
+                "Official release builds must be signed with release keystore. " +
+                "For local testing without release keys, run './gradlew assembleDebug' instead."
+            )
+        }
+        if (keystorePassword.isNullOrEmpty()) {
+            throw GradleException(
+                "Release build failed: ANDROID_KEYSTORE_PASSWORD environment variable is missing or empty. " +
+                "For local testing without release keys, run './gradlew assembleDebug' instead."
+            )
+        }
+    }
+}
+
+// ─── Task: Automatic Web Asset Preparation into Android Assets ───
+val repoRoot = rootDir.parentFile?.parentFile ?: file("../../")
+val prepareScript = File(repoRoot, "scripts/prepare-ui.mjs")
+
+val prepareWebAssets = tasks.register<Exec>("prepareWebAssets") {
+    group = "build"
+    description = "Prepares and injects web assets with TMDB credentials into Android assets"
+    workingDir = repoRoot
+    if (!prepareScript.exists()) {
+        throw GradleException("Required UI preparation script not found: ${prepareScript.absolutePath}")
+    }
+    val isWindows = System.getProperty("os.name")?.lowercase()?.contains("windows") == true
+    if (isWindows) {
+        commandLine("cmd", "/c", "node", prepareScript.absolutePath)
+    } else {
+        commandLine("node", prepareScript.absolutePath)
+    }
+    // Fail immediately if node script exits with non-zero status
+    isIgnoreExitValue = false
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(prepareWebAssets)
 }

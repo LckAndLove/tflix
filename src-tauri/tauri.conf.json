@@ -4,9 +4,12 @@
   "version": "1.3.0",
   "identifier": "com.nunesnetwork.tflix",
   "build": {
+    "beforeDevCommand": "node scripts/prepare-ui.mjs",
+    "beforeBuildCommand": "node scripts/prepare-ui.mjs",
     "frontendDist": "../ui"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [],
     "security": {
       "csp": null

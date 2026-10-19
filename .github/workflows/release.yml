@@ -61,6 +61,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
 
       - name: Build Windows Application
         if: matrix.platform == 'win'
@@ -68,6 +69,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
 
       - name: Build Linux Application
         if: matrix.platform == 'linux'
@@ -75,6 +77,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
@@ -103,6 +106,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare Web Assets
+        run: node scripts/prepare-ui.mjs
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
@@ -112,11 +125,27 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Decode Android Keystore
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Error: ANDROID_KEYSTORE_BASE64 secret is missing in repository settings!" >&2
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/android/app/release.p12
+          echo "Release keystore decoded successfully."
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
       - name: Build Android Release APK
         working-directory: app/android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4

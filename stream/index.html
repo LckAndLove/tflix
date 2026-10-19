@@ -696,7 +696,7 @@ function showFatal() {
     <div class="fatal">
       <h2>${esc(t('fatalTitle'))}</h2>
       <p>${esc(t('fatalDesc'))}</p>
-      <a href="/">${esc(t('fatalLink'))}</a>
+      <a href="../index.html">${esc(t('fatalLink'))}</a>
     </div>`;
   document.title = 'TFLIX';
 }
@@ -719,10 +719,10 @@ function toast(msg){
 }
 
 /* ─── NAV ─── */
-$('logo').addEventListener('click', () => { location.href = '/'; });
+$('logo').addEventListener('click', () => { location.href = '../index.html'; });
 $('back-btn').addEventListener('click', () => {
-  if (history.length > 1 && document.referrer.includes(location.host)) history.back();
-  else location.href = '/';
+  if (history.length > 1) history.back();
+  else location.href = '../index.html';
 });
 
 /* ─── INIT ─── */
@@ -734,7 +734,7 @@ $('back-btn').addEventListener('click', () => {
       <div class="fatal">
         <h2>${esc(t('nothingTitle'))}</h2>
         <p>${esc(t('nothingDesc'))}</p>
-        <a href="/">${esc(t('fatalLink'))}</a>
+        <a href="../index.html">${esc(t('fatalLink'))}</a>
       </div>`;
     document.title = 'TFLIX';
     return;

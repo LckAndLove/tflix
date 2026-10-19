@@ -60,7 +60,7 @@
           }
         } catch (e) {}
       }
-      return origFetch.apply(this, arguments);
+      return origFetch.call(this, resource, init);
     };
   }
 

@@ -850,7 +850,7 @@
 /* ─── CONFIG ─── */
 const API_BASE = "https://api.themoviedb.org/3";
 const IMG_BASE = "https://image.tmdb.org/t/p/";
-const PLAYER   = "/stream";
+const PLAYER   = "stream/index.html";
 const HEADERS = {
   'Authorization': 'Bearer __TMDB_TOKEN__',
   'accept': 'application/json'
@@ -1952,7 +1952,7 @@ async function startUpdate() {
     if (window.__TAURI__.event && typeof window.__TAURI__.event.listen === 'function') {
       try {
         unlisten = await window.__TAURI__.event.listen('update-download-progress', ev => {
-          const pct = ev.payload?.percentage || 0;
+          const pct = Math.max(5, Math.min(99, ev.payload?.percentage ?? ev.payload?.percent ?? 0));
           progressBar.style.width = pct + '%';
           progressText.textContent = t('updateDownloading').replace('%s', pct);
         });
@@ -1960,8 +1960,9 @@ async function startUpdate() {
     }
 
     try {
-      progressText.textContent = t('updateRestarting');
       await window.__TAURI__.core.invoke('install_update');
+      progressText.textContent = t('updateRestarting');
+      progressBar.style.width = '100%';
     } catch (err) {
       btn.disabled = false;
       progressWrap.style.display = 'none';

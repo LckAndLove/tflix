@@ -18,6 +18,7 @@
         android:banner="@drawable/tv_banner"
         android:allowBackup="true"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.TFLIX">
 
         <!-- configChanges keeps the WebView alive across rotation / TV display

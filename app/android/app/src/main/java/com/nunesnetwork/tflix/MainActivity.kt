@@ -38,8 +38,8 @@ import android.webkit.WebViewClient
 class MainActivity : Activity() {
 
     companion object {
-        private const val SITE_URL = "https://tflix.nunesnetwork.com/"
-        private const val SITE_ORIGIN = "https://tflix.nunesnetwork.com"
+        private const val SITE_URL = "file:///android_asset/web/index.html"
+        private const val ASSET_PREFIX = "file:///android_asset/web/"
 
         // The site's Support button links here — the one pop-up we let
         // through, handed to the system browser (same as the desktop app).
@@ -66,6 +66,12 @@ class MainActivity : Activity() {
         val s = webView.settings
         s.javaScriptEnabled = true
         s.domStorageEnabled = true                    // saved server choice (localStorage)
+        s.allowFileAccess = true
+        s.allowContentAccess = true
+        @Suppress("DEPRECATION")
+        s.allowFileAccessFromFileURLs = true
+        @Suppress("DEPRECATION")
+        s.allowUniversalAccessFromFileURLs = true
         s.mediaPlaybackRequiresUserGesture = false
         s.useWideViewPort = true                      // honor the site's viewport meta
         s.loadWithOverviewMode = true
@@ -87,17 +93,37 @@ class MainActivity : Activity() {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
         webView.webViewClient = object : WebViewClient() {
-            // Keep the top frame pinned to the TFLIX site: ad scripts sometimes
-            // try to hijack the whole page via top.location = adURL.
-            //
-            // IMPORTANT: only guard the MAIN frame. The third-party stream
-            // <iframe>s legitimately navigate and redirect cross-origin to load
-            // their players — blocking those leaves the embeds broken.
+            // Keep local asset navigation within WebView (e.g. index.html <-> stream/index.html).
+            // Only explicitly authorized external links (GitHub support / repository) open in system browser.
+            // All top-frame ad redirects are strictly blocked.
+            // Third-party embed iframes (!isForMainFrame) are allowed to navigate cross-origin.
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest,
-            ): Boolean =
-                request.isForMainFrame && !request.url.toString().startsWith(SITE_ORIGIN)
+            ): Boolean {
+                val url = request.url.toString()
+
+                // Allow internal asset navigation between app pages
+                if (url.startsWith(ASSET_PREFIX) || url.startsWith("file:///android_asset/")) {
+                    return false
+                }
+
+                // Explicitly allowed external destinations (GitHub support / issues / repo)
+                if (url.startsWith("https://github.com/") || url.startsWith(SUPPORT_URL)) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    } catch (_: Exception) {}
+                    return true
+                }
+
+                // Block any other top-frame navigation (prevents ad popunders / redirects from hijacking app or launching browser)
+                if (request.isForMainFrame) {
+                    return true
+                }
+
+                // Allow stream embeds in iframes to navigate and redirect freely
+                return false
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -118,7 +144,8 @@ class MainActivity : Activity() {
                         v: WebView,
                         request: WebResourceRequest,
                     ): Boolean {
-                        if (request.url.toString().startsWith(SUPPORT_URL)) {
+                        val target = request.url.toString()
+                        if (target.startsWith("https://github.com/") || target.startsWith(SUPPORT_URL)) {
                             try {
                                 startActivity(Intent(Intent.ACTION_VIEW, request.url))
                             } catch (_: Exception) {

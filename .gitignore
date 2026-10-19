@@ -15,3 +15,14 @@ Thumbs.db
 # Dist / Build outputs
 dist/
 build/
+
+# Generated web assets (scripts/prepare-ui.mjs)
+ui/
+app/android/app/src/main/assets/web/
+
+# Android Keystores & Signing Keys
+*.p12
+*.jks
+*.keystore
+release.p12
+

@@ -1,10 +1,8 @@
-use tauri::{Emitter, Manager, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use serde::Serialize;
 
-const SITE_URL: &str = "https://tflix.nunesnetwork.com/";
-const SITE_ORIGIN: &str = "https://tflix.nunesnetwork.com";
 const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 
 const INIT_SCRIPT: &str = include_str!("init.js");
@@ -55,6 +53,7 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
                             "chunk": chunk_length,
                             "downloaded": downloaded,
                             "total": content_length,
+                            "percentage": percent,
                             "percent": percent
                         }),
                     );
@@ -89,9 +88,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![check_update, install_update, open_external])
         .setup(|app| {
             let app_handle = app.handle().clone();
-            let target_url: Url = SITE_URL.parse().expect("valid site URL");
-
-            let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(target_url))
+            let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("TFLIX")
                 .inner_size(1400.0, 880.0)
                 .min_inner_size(940.0, 600.0)
@@ -107,7 +104,10 @@ pub fn run() {
                         return false;
                     }
                     // Pin top frame to TFLIX origin (block external popups/ad redirects)
-                    if !url_str.starts_with(SITE_ORIGIN) {
+                    let is_app = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
+                        || (matches!(url.scheme(), "http" | "https")
+                            && url.host_str() == Some("tauri.localhost"));
+                    if !is_app {
                         return false;
                     }
                     true
