@@ -52,7 +52,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run ${{ matrix.script }}
+        run: npm run ${{ matrix.script }} -- --publish never
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
@@ -136,6 +136,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: TFLIX ${{ steps.vars.outputs.tag }}
           files: release-assets/*
           draft: false

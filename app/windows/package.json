@@ -4,6 +4,10 @@
   "description": "TFLIX — Watch Movies & TV, as a Windows desktop app.",
   "author": "Tomas Nunes",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LckAndLove/tflix.git"
+  },
   "main": "main.js",
   "scripts": {
     "make-icon": "node scripts/make-icon.js",
@@ -19,6 +23,7 @@
     "png-to-ico": "^2.1.8"
   },
   "build": {
+    "publish": null,
     "appId": "com.nunesnetwork.tflix",
     "productName": "TFLIX",
     "directories": {
