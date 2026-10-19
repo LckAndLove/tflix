@@ -136,9 +136,11 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Using release tag: ${TAG}"
 
-      - name: List Release Assets
+      - name: Flatten and List Release Assets
         run: |
-          ls -lh release-assets/
+          mkdir -p release-files
+          find release-assets/ -type f -exec cp -v {} release-files/ \;
+          ls -lh release-files/
 
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
@@ -146,7 +148,7 @@ jobs:
           tag_name: ${{ steps.vars.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: TFLIX ${{ steps.vars.outputs.tag }} (Tauri 2)
-          files: release-assets/*
+          files: release-files/*
           draft: false
           prerelease: false
           generate_release_notes: true
