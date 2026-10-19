@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (leave blank to use package.json version)'
+        description: 'Release tag (leave blank to use version 1.1.2)'
         required: false
         default: ''
 
@@ -16,54 +16,68 @@ permissions:
 
 jobs:
   build-desktop:
-    name: Build Desktop (${{ matrix.target }})
+    name: Build Desktop (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            target: mac
-            script: build:mac
+            platform: mac
           - os: windows-latest
-            target: win
-            script: build:win
+            platform: win
           - os: ubuntu-latest
-            target: linux
-            script: build:linux
+            platform: linux
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'mac' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: app/windows/package-lock.json
 
-      - name: Install dependencies
-        working-directory: app/windows
-        run: npm ci
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
 
-      - name: Build Desktop Application (${{ matrix.target }})
-        working-directory: app/windows
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run ${{ matrix.script }} -- --publish never
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@^2
+
+      - name: Build macOS Application (universal)
+        if: matrix.platform == 'mac'
+        run: |
+          tauri build --target universal-apple-darwin
+          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
+          ditto -c -k --sequesterRsrc --keepParent TFLIX.app ../dmg/tflix-mac-universal.zip
+
+      - name: Build Windows Application
+        if: matrix.platform == 'win'
+        run: tauri build
+
+      - name: Build Linux Application
+        if: matrix.platform == 'linux'
+        run: tauri build
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.target }}
+          name: desktop-${{ matrix.platform }}
           path: |
-            app/windows/dist/*.dmg
-            app/windows/dist/*.zip
-            app/windows/dist/*.exe
-            app/windows/dist/*.AppImage
-            app/windows/dist/*.deb
+            src-tauri/target/**/bundle/dmg/*.dmg
+            src-tauri/target/**/bundle/dmg/*.zip
+            src-tauri/target/**/bundle/nsis/*.exe
+            src-tauri/target/**/bundle/msi/*.msi
+            src-tauri/target/**/bundle/appimage/*.AppImage
+            src-tauri/target/**/bundle/deb/*.deb
           if-no-files-found: error
 
   build-android:
@@ -103,11 +117,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (for version extraction)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: Download all built artifacts
         uses: actions/download-artifact@v4
         with:
@@ -122,8 +131,7 @@ jobs:
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
           else
-            VERSION=$(node -p "require('./app/windows/package.json').version")
-            TAG="v${VERSION}"
+            TAG="v1.1.2"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Using release tag: ${TAG}"
@@ -137,7 +145,7 @@ jobs:
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: TFLIX ${{ steps.vars.outputs.tag }}
+          name: TFLIX ${{ steps.vars.outputs.tag }} (Tauri 2)
           files: release-assets/*
           draft: false
           prerelease: false
