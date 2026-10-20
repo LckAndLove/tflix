@@ -494,7 +494,8 @@
     }
     .modal-backdrop.open .modal { transform: none; }
 
-    .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+    .modal-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
     .modal-hero { position: relative; aspect-ratio: 16/9; background: var(--card); }
     #modal-backdrop-img { position: absolute; inset: 0; background-size: cover; background-position: center 20%; }
     .modal-hero::after {
