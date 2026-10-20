@@ -75,9 +75,6 @@
     .source-health[data-state="failed"] .source-health-copy { color:#ff8a8a; }
     .source-health-dot { width:5px; height:5px; flex:0 0 auto; border-radius:50%; background:currentColor; }
     .server-grid { display:grid; grid-template-columns:1fr; gap:0; }
-    .backup-sources > summary { cursor:pointer; color:#ddd; font-size:13px; list-style:none; }
-    .backup-sources > summary::-webkit-details-marker { display:none; }
-    .backup-sources[open] > summary { margin-bottom:18px; }
     .server-card { display:grid; grid-template-columns:6px minmax(0,1fr); gap:12px; align-items:center; min-height:66px; width:100%; padding:14px 10px; background:none; border:0; border-bottom:1px solid #ffffff12; text-align:left; color:#ddd; }
     .server-card:last-child { border-bottom:0; }
     .server-card:hover { background:#ffffff09; }
@@ -96,14 +93,12 @@
     .fatal { display:grid; place-content:center; height:100%; text-align:center; gap:16px; padding:24px; color:#aaa; }
     .fatal h2 { color:#fff; font-size:24px; }
     .fatal a { color:#fff; text-decoration:underline; }
-    .controls-col[data-panel="sources"] { width:min(260px,calc(100% - 24px)); }
-    .controls-col[data-panel="sources"] .drawer-header { padding:12px 14px 0; gap:10px; }
+    .controls-col[data-panel="sources"] { width:min(200px,calc(100% - 24px)); }
+    .controls-col[data-panel="sources"] .drawer-header { display:none; }
     .controls-col[data-panel="sources"] .drawer-header h2 { font-size:14px; }
     .controls-col[data-panel="sources"] .drawer-close { padding:4px 0 4px 8px; font-size:11px; }
-    .controls-col[data-panel="sources"] .panel { padding:12px 14px; }
-    .controls-col[data-panel="sources"] .backup-sources > summary { font-size:11px; }
-    .controls-col[data-panel="sources"] .backup-sources[open] > summary { margin-bottom:8px; }
-    .controls-col[data-panel="sources"] .source-health { padding-bottom:8px; }
+    .controls-col[data-panel="sources"] .panel { padding:6px; }
+    .controls-col[data-panel="sources"] .source-health { display:none; }
     .controls-col[data-panel="sources"] .source-health-copy { gap:6px; font-size:11px; }
     .controls-col[data-panel="sources"] .server-card { min-height:34px; padding:7px 8px; gap:8px; }
     .controls-col[data-panel="sources"] .s-name { font-size:12px; }
@@ -121,7 +116,7 @@
     <div class="logo" id="logo">TFLIX</div>
     <div class="now-title" id="now-title">Loading…</div>
     <button class="watch-action" id="episodes-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span id="episodes-label">Episodes</span></button>
-    <button class="watch-action" id="sources-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span id="sources-label">Settings</span></button>
+    <button class="watch-action" id="sources-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span id="sources-label">—</span><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
     <button class="support-btn" id="lang-btn" title="Language / 语言" aria-label="Language / 语言" style="cursor:pointer;">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
@@ -166,13 +161,10 @@
       </div>
 
       <div class="panel" id="servers-panel">
-        <details class="backup-sources">
-        <summary>备用线路</summary>
         <div class="source-health" id="source-health" data-state="checking" role="status" aria-live="polite">
           <div class="source-health-copy"><span class="source-health-dot"></span><span id="source-health-text">Checking source…</span></div>
         </div>
         <div class="server-grid" id="server-grid"></div>
-        </details>
       </div>
     </aside>
   </main>
@@ -198,7 +190,7 @@ const LANG_STORAGE_KEY = 'tflix_lang';
 const I18N = {
   en: {
     sourceBlocked:'Unavailable in this player', failureTitle:'This source cannot play', failureCopy:'This source is unavailable or does not support embedding. Try another source; your episode selection is preserved.', failureAction:'Choose another source',
-    episodes: 'Episodes', sources: 'Settings', settings:'Settings', backupSources:'Backup sources', close: 'Close',
+    episodes: 'Episodes', sources: 'Choose source', close: 'Close',
     langShort: 'EN',
     back: 'Back',
     support: 'Support',
@@ -235,7 +227,7 @@ const I18N = {
   },
   zh: {
     sourceBlocked:'当前播放器不支持', failureTitle:'这个播放源暂时无法播放', failureCopy:'当前来源不可用或不支持嵌入。请尝试其他播放源，已保留当前选集。', failureAction:'选择其他播放源',
-    episodes: '选集', sources: '设置', settings:'设置', backupSources:'备用线路', close: '关闭',
+    episodes: '选集', sources: '选择播放源', close: '关闭',
     langShort: '中',
     back: '返回',
     support: '技术支持',
@@ -452,21 +444,12 @@ function updateSourceStatus(status, message) {
 }
 
 function updateServerCards() {
+  if(state) $('sources-label').textContent=serverName(state.server);
   document.querySelectorAll('.server-card').forEach(card => {
     const id = Number(card.dataset.id);
     const status = sourceStatuses[id] || 'unknown';
     card.dataset.status = status;
-    const label = card.querySelector('.s-state');
-    if (!label) return;
-    const labels = {
-      selected: t('sourceSelectedLabel'),
-      unknown: '',
-      checking: t('sourceCheckingLabel'),
-      available: t('sourceReadyLabel'),
-      playing: t('sourcePlayingLabel'),
-      failed: t('sourceFailedLabel')
-    };
-    label.textContent = labels[status];
+    card.setAttribute('aria-pressed',String(id===state.server));
   });
 }
 
@@ -535,17 +518,17 @@ function buildServers() {
       <span class="s-dot"></span>
       <span class="s-meta">
         <span class="s-name">${esc(s.name)}</span>
-        <span class="s-state"></span>
       </span>`;
     el.addEventListener('click', () => {
       localStorage.setItem(STORAGE_KEY,String(s.id));
-      if (s.id === state.server) { rememberCurrentEpisodeServer();return; }
+      if (s.id === state.server) { rememberCurrentEpisodeServer();closeWatchDrawer();return; }
       if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))
         pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};
       state.server = s.id;
       rememberCurrentEpisodeServer();
       document.querySelectorAll('.server-card').forEach(c => c.classList.toggle('selected', c === el));
       loadPlayer();
+      closeWatchDrawer();
       toast(t('nowStreaming').replace('%s', s.name));
     });
     grid.appendChild(el);
@@ -558,11 +541,10 @@ function applyTranslations() {
   $('lang-label').textContent = t('langShort');
   $('failure-action').textContent = t('failureAction');
   $('episodes-label').textContent = t('episodes');
-  $('sources-label').textContent = t('sources');
+  $('sources-label').textContent = state ? serverName(state.server) : '—';
   $('drawer-close').textContent = t('close');
   $('drawer-scrim').setAttribute('aria-label',t('close'));
-  $('drawer-title').textContent = t($('watch-drawer').dataset.panel === 'episodes' ? 'episodes' : 'settings');
-  document.querySelector('.backup-sources > summary').textContent=t('backupSources');
+  $('drawer-title').textContent = t($('watch-drawer').dataset.panel === 'episodes' ? 'episodes' : 'sources');
   $('episodes-btn').hidden = state?.type !== 'tv';
   $('back-btn').title = t('back');
   $('back-btn').setAttribute('aria-label', t('back'));
@@ -929,9 +911,10 @@ function openWatchDrawer(panel) {
   drawer.dataset.panel = panel;
   drawer.hidden = false;
   $('drawer-scrim').hidden = false;
-  $('drawer-title').textContent = t(panel === 'episodes' ? 'episodes' : 'settings');
+  $('drawer-title').textContent = t(panel === 'episodes' ? 'episodes' : 'sources');
   for (const id of ['episodes-btn','sources-btn']) $(id).setAttribute('aria-expanded',String($(id) === trigger));
-  $('drawer-close').focus({preventScroll:true});
+  const focusTarget=panel==='sources' ? drawer.querySelector('.server-card.selected') : $('drawer-close');
+  (focusTarget||$('drawer-close')).focus({preventScroll:true});
 }
 $('episodes-btn').addEventListener('click',()=>openWatchDrawer('episodes'));
 $('sources-btn').addEventListener('click',()=>openWatchDrawer('sources'));

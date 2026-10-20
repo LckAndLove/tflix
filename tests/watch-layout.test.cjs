@@ -5,7 +5,8 @@ const vm=require('node:vm');
 const html=fs.readFileSync('stream/index.html','utf8');
 function watch(){
   const handlers={},elements={};let focused;
-  for(const id of ['watch-drawer','drawer-scrim','episodes-btn','sources-btn','drawer-close','drawer-title']) elements[id]={id,hidden:true,dataset:{},attrs:{},setAttribute(k,v){this.attrs[k]=v;},focus(){focused=this;},addEventListener(k,v){handlers[id+':'+k]=v;}};
+  for(const id of ['watch-drawer','drawer-scrim','episodes-btn','sources-btn','drawer-close','drawer-title','selected-source']) elements[id]={id,hidden:true,dataset:{},attrs:{},setAttribute(k,v){this.attrs[k]=v;},focus(){focused=this;},addEventListener(k,v){handlers[id+':'+k]=v;}};
+  elements['watch-drawer'].querySelector=()=>elements['selected-source'];
   elements['watch-drawer'].querySelectorAll=()=>[elements['drawer-close'],elements['sources-btn']];
   for(const el of Object.values(elements)) el.getClientRects=()=>[{}];
   const context={revealWatchControls(){},$:id=>elements[id],t:k=>k,document:{addEventListener:(k,v)=>handlers[k]=v,activeElement:null},loadPlayer(){throw Error('Settings must not reload playback');}};
@@ -30,4 +31,11 @@ test('Tab stays inside open settings',()=>{
  w.context.document.activeElement=w.elements['sources-btn'];let prevented=false;
  w.handlers.keydown({key:'Tab',shiftKey:false,preventDefault(){prevented=true;}});
  assert.equal(prevented,true);assert.equal(w.focused.id,'drawer-close');
+});
+
+test('source picker focuses the current source and Escape returns to its trigger',()=>{
+ const w=watch();w.context.openWatchDrawer('sources');
+ assert.equal(w.focused.id,'selected-source');
+ w.handlers.keydown({key:'Escape',preventDefault(){},stopImmediatePropagation(){}});
+ assert.equal(w.focused.id,'sources-btn');
 });
