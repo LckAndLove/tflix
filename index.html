@@ -681,9 +681,52 @@
     .update-progress-bar { width: 0%; height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.2s ease; }
     .update-progress-text { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
     .update-actions { display: flex; justify-content: flex-end; gap: 0.8rem; }
+
+    .startup-cover { position:fixed; inset:0; z-index:2147483647; background:#08080b; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:30px; opacity:1; transition:opacity .25s ease; animation:startup-safety 0s 4s forwards; }
+    .startup-brand { font-family:Arial,sans-serif; font-size:clamp(36px,6vw,64px); font-weight:800; letter-spacing:-.06em; color:#e50914; }
+    .startup-spinner { width:30px; height:30px; border:3px solid #ffffff16; border-top-color:#e50914; border-radius:50%; animation:spin .8s linear infinite; }
+    .startup-cover.leaving { opacity:0; pointer-events:none; }
+    @keyframes startup-safety { to { opacity:0; visibility:hidden; pointer-events:none; } }
+    @media(prefers-reduced-motion:reduce) { .startup-spinner { animation:none; border-color:#e50914; } .startup-cover { transition:none; } }
+
+    #lang-btn { height:38px; padding:0 12px; gap:8px; border-radius:6px; background:#0004; border-color:#ffffff30; font-weight:400; }
+    #lang-btn .s-name { display:inline; }
+    #lang-btn svg { width:15px; height:15px; }
+    #lang-btn svg:last-child { width:10px; height:10px; }
+    #lang-menu { min-width:156px; border-radius:6px; top:calc(100% + 8px); padding:5px; }
+    #lang-menu-header { display:none; }
+    #lang-menu .server-item { padding:10px 12px; border-radius:3px; font-size:13px; }
+    #lang-menu .s-dot { display:none; }
+    #lang-menu .server-item.active { background:#ffffff12; font-weight:600; }
   </style>
 </head>
 <body>
+
+<div id="startup-cover" class="startup-cover" role="status" aria-label="正在加载 TFLIX">
+  <div class="startup-brand" aria-hidden="true">TFLIX</div>
+  <div class="startup-spinner" aria-hidden="true"></div>
+</div>
+<script data-startup>
+(function () {
+  const MIN_VISIBLE_MS=1100,MAX_VISIBLE_MS=3500,FADE_MS=250;
+  const started=Date.now(),cover=document.getElementById('startup-cover');
+  let dismissed=false,minTimer;
+  function dismiss() {
+    if(dismissed)return;
+    dismissed=true;clearTimeout(maxTimer);clearTimeout(minTimer);
+    cover.classList.add('leaving');
+    setTimeout(()=>cover.remove(),FADE_MS);
+  }
+  const maxTimer=setTimeout(dismiss,MAX_VISIBLE_MS);
+  window.finishStartup=()=>{
+    if(dismissed)return;
+    clearTimeout(minTimer);
+    minTimer=setTimeout(dismiss,Math.max(0,MIN_VISIBLE_MS-(Date.now()-started)));
+  };
+  // The timer above is independent of metadata requests and the main app script.
+})();
+</script>
+
 
 <!-- ─────────────── NAVBAR ─────────────── -->
 <header id="header">
@@ -713,7 +756,7 @@
     </a>
 
     <div class="server-wrap" id="lang-wrap">
-      <button class="server-btn" id="lang-btn" title="Language / 语言">
+      <button class="server-btn" id="lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu" title="Language / 语言">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -725,11 +768,7 @@
         <div class="server-menu-header" id="lang-menu-header">Language / 语言</div>
         <button type="button" class="server-item lang-item" data-lang="en"><span class="s-dot"></span><span>English</span></button>
         <button type="button" class="server-item lang-item" data-lang="zh"><span class="s-dot"></span><span>简体中文</span></button>
-        <div style="height:1px;background:var(--line);margin:4px 0;"></div>
-        <button type="button" class="server-item" id="nav-check-update">
-          <div class="s-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></div>
-          <span id="nav-check-update-label">Check for Updates</span>
-        </button>
+
       </div>
     </div>
 
@@ -927,7 +966,8 @@ const I18N = {
     checkingUpdate: 'Checking for updates…',
     updateAvailable: 'New version available: %s',
     updateLatest: 'You are on the latest version (%s)',
-    updateFailed: 'Check update failed: %s',
+    updateFailed: 'Unable to check for updates right now. Please try again later.',
+    installFailed: 'The update could not be installed. Please try again later.',
     updateTitle: 'Software Update',
     updateNotesLabel: 'Release Notes:',
     updateCurrent: 'Current: %s',
@@ -987,7 +1027,8 @@ const I18N = {
     checkingUpdate: '正在检查最新版本…',
     updateAvailable: '发现新版本：%s',
     updateLatest: '当前已是最新版本 (%s)',
-    updateFailed: '检查更新失败：%s',
+    updateFailed: '暂时无法检查更新，请稍后重试。',
+    installFailed: '更新暂未安装成功，请稍后重试。',
     updateTitle: '软件版本更新',
     updateNotesLabel: '更新日志：',
     updateCurrent: '当前版本：%s',
@@ -1141,7 +1182,7 @@ function applyTranslations() {
   $('modal-retry').textContent=t('retry');
   for(const id of ['modal-close','update-modal-close']) $(id).setAttribute('aria-label',t('close'));
   document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
-  if (langLabel) langLabel.textContent = t('langShort');
+  if (langLabel) langLabel.textContent = currentLang==='zh'?'中文':'English';
   const langHeader = $('lang-menu-header');
   if (langHeader) langHeader.textContent = t('langHeader');
 
@@ -1238,7 +1279,7 @@ async function changeLanguage(newLang) {
 document.querySelectorAll('.lang-item').forEach(el => {
   el.addEventListener('click', () => {
     const lang = el.dataset.lang;
-    langMenu.classList.remove('open');
+    langMenu.classList.remove('open');langBtn.setAttribute('aria-expanded','false');
     changeLanguage(lang);
   });
 });
@@ -1246,10 +1287,11 @@ document.querySelectorAll('.lang-item').forEach(el => {
 langBtn.addEventListener('click', e => {
   e.stopPropagation();
   langMenu.classList.toggle('open');
+  langBtn.setAttribute('aria-expanded',String(langMenu.classList.contains('open')));
 });
 
 document.addEventListener('click', () => {
-  langMenu.classList.remove('open');
+  langMenu.classList.remove('open');langBtn.setAttribute('aria-expanded','false');
 });
 
 /* ─── PLAYER URL ─── */
@@ -1982,6 +2024,7 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
 /* ─── AUTO-UPDATER ─── */
 const APP_VERSION = '1.3.0';
 let currentUpdateData = null;
+let updateCheckInFlight = false, updateInstalling = false;
 
 function semverGt(v1, v2) {
   const p1 = (v1 || '').replace(/^v/, '').split('.').map(x => parseInt(x, 10) || 0);
@@ -2014,6 +2057,7 @@ function showUpdateModal(data) {
 }
 
 function closeUpdateModal() {
+  if(updateInstalling)return;
   $('update-modal-backdrop').classList.remove('open');
   syncModalIsolation();
   currentUpdateData = null;
@@ -2021,56 +2065,39 @@ function closeUpdateModal() {
 }
 
 async function checkForUpdates(manual = false) {
+  if(updateCheckInFlight || updateInstalling)return;
+  updateCheckInFlight=true;
   if (manual) toast(t('checkingUpdate'));
-
-  // 1. Try Tauri native updater
-  if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
-    try {
-      const update = await window.__TAURI__.core.invoke('check_update');
-      if (update && update.version) {
-        showUpdateModal({
-          version: update.version,
-          notes: update.body || '',
-          date: update.date || '',
-          isNative: true
-        });
-        return;
-      }
-    } catch (e) {
-      console.warn('Tauri native update check error:', e);
-    }
-  }
-
-  // 2. Fallback: GitHub Releases API
   try {
-    const res = await fetch('https://api.github.com/repos/LckAndLove/tflix/releases/latest');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const release = await res.json();
-    const tagName = (release.tag_name || '').replace(/^v/, '');
-    if (tagName && semverGt(tagName, APP_VERSION)) {
-      showUpdateModal({
-        version: tagName,
-        notes: release.body || '',
-        html_url: release.html_url,
-        isNative: false
-      });
-      return;
+    if (window.__TAURI__?.core?.invoke) {
+      const update=await window.__TAURI__.core.invoke('check_update');
+      if(update?.version) showUpdateModal({version:update.version,notes:update.body||'',date:update.date||'',isNative:true});
+      else if(manual) toast(t('updateLatest').replace('%s','v'+APP_VERSION));
+      return; // A successful native check is authoritative, including no update.
     }
-    if (manual) toast(t('updateLatest').replace('%s', 'v' + APP_VERSION));
-  } catch (err) {
-    if (manual) toast(t('updateFailed').replace('%s', err.message || 'Network error'));
-  }
+    // The public release manifest avoids the unauthenticated GitHub API limit.
+    const res=await fetch('https://github.com/LckAndLove/tflix/releases/latest/download/latest.json',{signal:AbortSignal.timeout(12000)});
+    if(!res.ok)throw Error('Update manifest unavailable');
+    const release=await res.json();
+    if(!/^\d+\.\d+\.\d+$/.test(release.version||''))throw Error('Invalid update version');
+    if(semverGt(release.version,APP_VERSION))showUpdateModal({version:release.version,notes:release.notes||'',html_url:'https://github.com/LckAndLove/tflix/releases/latest',isNative:false});
+    else if(manual)toast(t('updateLatest').replace('%s','v'+APP_VERSION));
+  } catch(error) {
+    console.warn('Update check failed:',error);
+    if(manual)toast(t('updateFailed'));
+  } finally { updateCheckInFlight=false; }
 }
 
 async function startUpdate() {
-  if (!currentUpdateData) return;
+  if (!currentUpdateData || updateInstalling) return;
   const btn = $('update-confirm-btn');
   const progressWrap = $('update-progress-wrap');
   const progressBar = $('update-progress-bar');
   const progressText = $('update-progress-text');
 
   if (currentUpdateData.isNative && window.__TAURI__ && window.__TAURI__.core) {
-    btn.disabled = true;
+    updateInstalling=true;
+    for(const id of ['update-confirm-btn','update-cancel-btn','update-modal-close'])$(id).disabled=true;
     progressWrap.style.display = 'block';
     progressBar.style.width = '5%';
     progressText.textContent = t('updateDownloading').replace('%s', '5');
@@ -2087,17 +2114,22 @@ async function startUpdate() {
     }
 
     try {
-      await window.__TAURI__.core.invoke('install_update');
+      await window.__TAURI__.core.invoke('install_update',{expectedVersion:currentUpdateData.version});
       progressText.textContent = t('updateRestarting');
       progressBar.style.width = '100%';
     } catch (err) {
       btn.disabled = false;
       progressWrap.style.display = 'none';
-      toast(t('updateFailed').replace('%s', err || 'Install failed'));
-      if (unlisten) unlisten();
+      console.warn('Update installation failed:',err);
+      toast(t('installFailed'));
+    } finally {
+      if(unlisten)unlisten();
+      updateInstalling=false;
+      for(const id of ['update-confirm-btn','update-cancel-btn','update-modal-close'])$(id).disabled=false;
     }
   } else if (currentUpdateData.html_url) {
-    window.open(currentUpdateData.html_url, '_blank');
+    if(window.__TAURI__?.core?.invoke)await window.__TAURI__.core.invoke('open_external',{url:currentUpdateData.html_url});
+    else window.open(currentUpdateData.html_url, '_blank','noopener,noreferrer');
     closeUpdateModal();
   }
 }
@@ -2108,7 +2140,7 @@ $('update-modal-close')?.addEventListener('click', closeUpdateModal);
 $('update-cancel-btn')?.addEventListener('click', closeUpdateModal);
 $('update-confirm-btn')?.addEventListener('click', startUpdate);
 $('nav-check-update')?.addEventListener('click', () => {
-  langMenu.classList.remove('open');
+  langMenu.classList.remove('open');langBtn.setAttribute('aria-expanded','false');
   checkForUpdates(true);
 });
 $('support-btn')?.addEventListener('click', e => {
@@ -2126,7 +2158,7 @@ document.addEventListener('keydown',event=>{
   const modal=document.querySelector('#update-modal-backdrop.open')||document.querySelector('#modal-backdrop.open');
   if(event.key==='Escape') {
     if($('update-modal-backdrop').classList.contains('open')) {event.preventDefault();closeUpdateModal();}
-    if(langMenu.classList.contains('open')) {langMenu.classList.remove('open');langBtn.focus();}
+    if(langMenu.classList.contains('open')) {langMenu.classList.remove('open');langBtn.setAttribute('aria-expanded','false');langBtn.focus();}
   }
   if(event.key==='Tab' && modal) {
     const controls=[...modal.querySelectorAll('button,select,a,input')].filter(el=>!el.disabled && !el.hidden && el.getClientRects().length);
@@ -2139,13 +2171,19 @@ document.addEventListener('keydown',event=>{
 /* ─── INIT ─── */
 (async function init() {
   applyTranslations();
-  loadGenres();
-  loadContinueWatching();
-  restorePlayerReturn();
-  await loadHero();
-  loadTop10();
-  for (const cfg of CATEGORY_ROWS) loadRow(cfg);
-  setTimeout(() => checkForUpdates(false), 3500);
+  const initialLoads=[loadGenres(),loadContinueWatching(),restorePlayerReturn(),loadHero(),loadTop10(),...CATEGORY_ROWS.map(cfg=>loadRow(cfg))];
+  setTimeout(() => checkForUpdates(false), 4500);
+  try {
+    await Promise.allSettled(initialLoads);
+    // Metadata alone is not enough: allow the first hero image to paint too.
+    const path=heroSlides[0]?.backdrop_path;
+    if(path) await new Promise(resolve=>{
+      const image=new Image();
+      const timer=setTimeout(resolve,1000);
+      image.onload=image.onerror=()=>{clearTimeout(timer);resolve();};
+      image.src=backdrop(path,'original');
+    });
+  } finally { window.finishStartup?.(); }
 })();
 </script>
 
@@ -2303,7 +2341,7 @@ document.addEventListener('keydown',event=>{
         closeUpdateModal();
         return;
       }
-      if (langMenu.classList.contains('open')) { langMenu.classList.remove('open'); setFocus(langBtn, false); }
+      if (langMenu.classList.contains('open')) { langMenu.classList.remove('open');langBtn.setAttribute('aria-expanded','false'); setFocus(langBtn, false); }
       else if (typing) ae.blur();
       return;                       // modal Escape: the page's own handler closes it
     }

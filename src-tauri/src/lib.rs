@@ -25,7 +25,7 @@ pub struct UpdateInfo {
 
 #[tauri::command]
 async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
+    let updater = app.updater_builder().timeout(std::time::Duration::from_secs(20)).build().map_err(|e| e.to_string())?;
     match updater.check().await {
         Ok(Some(update)) => Ok(Some(UpdateInfo {
             current_version: update.current_version.clone(),
@@ -39,9 +39,10 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 }
 
 #[tauri::command]
-async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
+async fn install_update(app: tauri::AppHandle, expected_version: String) -> Result<(), String> {
+    let updater = app.updater_builder().timeout(std::time::Duration::from_secs(180)).build().map_err(|e| e.to_string())?;
     if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        if update.version != expected_version { return Err("Update version changed. Please check again.".into()); }
         let app_handle = app.clone();
         let mut downloaded: u64 = 0;
         update
@@ -73,7 +74,7 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
 
         app.restart();
     }
-    Ok(())
+    Err("No update is currently available.".into())
 }
 
 #[tauri::command]

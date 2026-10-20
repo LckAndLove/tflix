@@ -79,12 +79,17 @@
     if (document.getElementById(VER_ID)) return;
     if (!document.body) return;
 
-    var label = document.createElement('div');
+    var label = document.createElement('button');
+    label.type='button';
+    label.setAttribute('aria-label','检查更新 / Check for updates');
     label.id = VER_ID;
     label.textContent = 'v' + APP_VERSION;
     label.title = '检查更新 / Check for updates';
 
     Object.assign(label.style, {
+      background: 'none',
+      border: '0',
+      padding: '4px',
       position: 'fixed',
       left: '14px',
       bottom: '12px',
