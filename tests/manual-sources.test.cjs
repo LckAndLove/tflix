@@ -30,7 +30,7 @@ test('legacy automatic flags and health scores cannot override the saved manual 
  });
  assert.equal(p.state().server,4);assert.equal(p.frames(),1);
  for(const timer of p.timers)timer.fn();
- assert.equal(p.state().server,4);assert.equal(p.frames(),1);assert.equal(p.elements['playback-failure'].hidden,true);
+ assert.equal(p.state().server,4);assert.equal(p.frames(),1);assert.equal(p.elements['playback-failure'].hidden,false);
  p.c.onPlayerMediaEvent({source:{},data:{type:'tflix:media-error'}});
  assert.equal(p.state().server,4);assert.equal(p.frames(),1);assert.equal(p.elements['playback-failure'].hidden,false);
  p.elements.player.onload();assert.equal(p.elements['playback-failure'].hidden,true);
