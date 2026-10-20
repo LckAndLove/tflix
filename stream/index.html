@@ -181,6 +181,7 @@ const HEADERS = {
 };
 
 const STORAGE_KEY = 'tflix_server';
+const EPISODE_SERVER_STORAGE_KEY = 'tflix_episode_servers_v1';
 const LANG_STORAGE_KEY = 'tflix_lang';
 
 const I18N = {
@@ -335,17 +336,48 @@ function readParams() {
   if (!id || (type !== 'movie' && type !== 'tv')) return null;
 
   let server = parseInt(p.get('server'), 10);
-  if (!server || !serverUrlResolvers[server]) {
-    const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-    server = (saved && serverUrlResolvers[saved]) ? saved : 4;
+  if (type === 'tv') {
+    const season = parseInt(p.get('s'), 10) || 1;
+    const episode = parseInt(p.get('e'), 10) || 1;
+    server = rememberedEpisodeServer(id, season, episode) || server;
   }
+  if (!server || !serverUrlResolvers[server]) server = defaultServer();
 
   const out = { type, id, server };
-  if (type === 'tv') {
-    out.season  = parseInt(p.get('s'), 10) || 1;
-    out.episode = parseInt(p.get('e'), 10) || 1;
-  }
+  if (type === 'tv') { out.season = parseInt(p.get('s'), 10) || 1; out.episode = parseInt(p.get('e'), 10) || 1; }
   return out;
+}
+
+function defaultServer() {
+  const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+  return saved && serverUrlResolvers[saved] ? saved : 4;
+}
+
+function episodeServerKey(id, season, episode) { return `tv:${id}:${season}:${episode}`; }
+function readEpisodeServers() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(EPISODE_SERVER_STORAGE_KEY)||'{}');
+    if(!saved || typeof saved!=='object' || Array.isArray(saved)) return {};
+    return saved;
+  } catch { return {}; }
+}
+function rememberedEpisodeServer(id, season, episode) {
+  const value=readEpisodeServers()[episodeServerKey(id,season,episode)];
+  const server=Number(typeof value==='object'?value?.server:value);
+  return serverUrlResolvers[server] ? server : null;
+}
+function rememberCurrentEpisodeServer() {
+  if(state?.type!=='tv' || !serverUrlResolvers[state.server]) return;
+  const saved=readEpisodeServers();
+  saved[episodeServerKey(state.id,state.season,state.episode)]={server:state.server,updatedAt:Date.now()};
+  const entries=Object.entries(saved).filter(([key,value])=>/^tv:\d+:\d+:\d+$/.test(key) && value && serverUrlResolvers[Number(typeof value==='object'?value.server:value)]);
+  entries.sort((a,b)=>(b[1]?.updatedAt||0)-(a[1]?.updatedAt||0));
+  try { localStorage.setItem(EPISODE_SERVER_STORAGE_KEY,JSON.stringify(Object.fromEntries(entries.slice(0,500)))); } catch {}
+}
+function applyEpisodeServerPreference() {
+  if(state?.type!=='tv') return state?.server;
+  state.server=rememberedEpisodeServer(state.id,state.season,state.episode)||defaultServer();
+  return state.server;
 }
 
 function syncUrl() {
@@ -646,6 +678,7 @@ function buildServers() {
       if (s.id === state.server) return;
       autoTryEnabled = false;
       state.server = s.id;
+      rememberCurrentEpisodeServer();
       document.querySelectorAll('.server-card').forEach(c => c.classList.toggle('selected', c === el));
       loadPlayer();
       toast(t('nowStreaming').replace('%s', s.name));
@@ -742,10 +775,11 @@ async function setupTv() {
   seasonSel.addEventListener('change', async () => {
     state.season = parseInt(seasonSel.value) || 1;
     state.episode = 1;
-    if(await populateEpisodes(true)) loadPlayer();
+    if(await populateEpisodes(true)) { applyEpisodeServerPreference(); loadPlayer(); }
   });
   episodeSel.addEventListener('change', () => {
     state.episode = parseInt(episodeSel.value) || 1;
+    applyEpisodeServerPreference();
     loadPlayer();closeWatchDrawer();
   });
 
@@ -853,6 +887,7 @@ async function goNextEpisode() {
   state.episode = next.episode;
   if (seasonChanged) { $('season-select').value = state.season; if(!await populateEpisodes(true))return; }
   else $('episode-select').value = state.episode;
+  applyEpisodeServerPreference();
   updateNextBtn();
   loadPlayer();closeWatchDrawer();
 }
@@ -906,10 +941,14 @@ window.addEventListener('message',async event=>{
   if(event.data?.type!=='tflix:episode-changed' || !isCurrentPlayerFrame(event.source) || state?.type!=='tv')return;
   const {season,episode}=event.data;
   if(!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
+  const previousServer=state.server;
   state.season=season;state.episode=episode;
   $('season-select').value=String(season);
   resetWatchPlaybackState();updateTitleBar();syncUrl();
   await populateEpisodes(true);
+  applyEpisodeServerPreference();
+  if(state.server!==previousServer) loadPlayer();
+  else syncUrl();
 });
 
 /* ─── WATCH PROGRESS ─── */

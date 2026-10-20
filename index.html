@@ -893,6 +893,7 @@ const I18N = {
     searchPlaceholder: 'Search movies & TV shows…',
     support: 'Support',
     serversHeader: 'Streaming Servers',
+    defaultSource: 'Default playback source',
     langHeader: 'Language / 语言',
     nowStreaming: 'Now streaming from %s',
     all: 'All',
@@ -952,6 +953,7 @@ const I18N = {
     searchPlaceholder: '搜索电影、电视剧…',
     support: '技术支持',
     serversHeader: '播放源服务器',
+    defaultSource: '默认播放源',
     langHeader: '语言设置',
     nowStreaming: '正在从 %s 播放',
     all: '全部',
@@ -1012,8 +1014,22 @@ const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I1
 
 /* ─── STATE ─── */
 const STORAGE_KEY = 'tflix_server';
+const EPISODE_SERVER_STORAGE_KEY = 'tflix_episode_servers_v1';
 const SERVER_DEFAULT_MIGRATION_KEY = 'tflix_server_default_migrated';
 const DEFAULT_SERVER = 4; // Ekko (CineSrc) is the verified working source.
+function episodeServerKey(id, season, episode) { return `tv:${id}:${season}:${episode}`; }
+function readEpisodeServers() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(EPISODE_SERVER_STORAGE_KEY)||'{}');
+    if(!saved || typeof saved!=='object' || Array.isArray(saved)) return {};
+    return Object.fromEntries(Object.entries(saved).filter(([key,value])=>/^tv:\d+:\d+:\d+$/.test(key) && value && SERVERS.some(s=>s.id===Number(typeof value==='object'?value.server:value))));
+  } catch { return {}; }
+}
+function rememberedEpisodeServer(id, season, episode) {
+  const value=readEpisodeServers()[episodeServerKey(id,season,episode)];
+  const server=Number(typeof value==='object'?value?.server:value);
+  return SERVERS.some(s=>s.id===server) ? server : null;
+}
 let currentServer = (() => {
   // Older builds defaulted to Rakan/Bard, both of which can hang on some
   // episodes. Move those old defaults once; preserve any later user choice.
@@ -1025,7 +1041,7 @@ let currentServer = (() => {
     localStorage.setItem(SERVER_DEFAULT_MIGRATION_KEY, 'ekko');
   }
   const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-  return SERVERS.some(s=>s.id===saved) && ![3,5].includes(saved) ? saved : DEFAULT_SERVER;
+  return SERVERS.some(s=>s.id===saved) ? saved : DEFAULT_SERVER;
 })();
 let currentFilter = 'all';
 let searchResults = [];
@@ -1146,7 +1162,8 @@ function applyTranslations() {
   const langHeader = $('lang-menu-header');
   if (langHeader) langHeader.textContent = t('langHeader');
   const srvHeader = $('server-menu-header');
-  if (srvHeader) srvHeader.textContent = t('serversHeader');
+  if (srvHeader) srvHeader.textContent = t('defaultSource');
+  if (serverBtn) serverBtn.title = t('defaultSource');
 
   // Nav links
   const navMap = { home: 'home', trending: 'trending', movies: 'movies', tv: 'tv' };
@@ -1256,14 +1273,17 @@ langBtn.addEventListener('click', e => {
 const serverMenu  = $('server-menu');
 const serverBtn   = $('server-btn');
 const serverLabel = $('server-label');
+const serverMenuHeader = $('server-menu-header');
+if (serverMenuHeader) serverMenuHeader.textContent = t('defaultSource');
+serverBtn.title = t('defaultSource');
 
 SERVERS.forEach(s => {
   const el = document.createElement('button');
   el.type='button';
   el.className = 'server-item' + (s.id === currentServer ? ' active' : '');
   el.dataset.id = s.id;
-  el.disabled=[3,5].includes(s.id);
-  el.title=el.disabled?(currentLang==='zh'?'当前播放器不支持':'Unavailable in this player'):'';
+  el.disabled=false;
+  el.title='';
   el.innerHTML = `<div class="s-dot"></div><span>${esc(s.name)}</span>`;
   el.addEventListener('click', () => {
     currentServer = s.id;
@@ -1293,8 +1313,9 @@ document.addEventListener('click', () => {
 
 /* ─── PLAYER URL ─── */
 function playerUrl(item, season = 1, episode = 1) {
-  const p = new URLSearchParams({ server: currentServer });
   const type = mediaOf(item);
+  const remembered = type === 'tv' ? rememberedEpisodeServer(item.id, season, episode) : null;
+  const p = new URLSearchParams({ server: remembered || currentServer });
   if (type === 'movie') {
     p.set('type', 'movie'); p.set('id', item.id);
   } else {
@@ -1870,9 +1891,7 @@ $('modal-watch-btn').addEventListener('click', () => {
   const s = parseInt($('season-select')?.value  || 1);
   const e = parseInt($('episode-select')?.value || 1);
   try{sessionStorage.setItem('tflix_return_v1',JSON.stringify({id:currentModalItem.id,type:currentModalItem.media_type,query:activeSearchQuery,filter:currentFilter}));}catch{}
-  const saved=lastWatched(currentModalItem);
   const url=new URL(playerUrl(currentModalItem,s,e),location.href);
-  if(saved && !saved.completed && (currentModalItem.media_type==='movie' || saved.season===s && saved.episode===e) && [1,2,4,6].includes(saved.server))url.searchParams.set('server',saved.server);
   window.location.href=url.href;
 });
 
