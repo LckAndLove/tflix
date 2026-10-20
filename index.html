@@ -480,7 +480,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .empty { text-align: center; padding: 5rem 2rem; color: var(--muted); }
-    .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
     .empty h3 { font-family: 'Bricolage Grotesque'; font-size: 1.5rem; color: var(--text); margin-bottom: 0.5rem; }
 
     /* ─────────────── MODAL ─────────────── */
@@ -756,7 +755,6 @@
   <div id="search-error" class="empty" role="alert" hidden><p id="search-error-copy"></p><button id="search-retry" class="btn btn-primary" type="button"></button></div>
   <div id="search-spinner" class="spinner-wrap" style="display:none"><div class="spinner"></div></div>
   <div id="search-empty" class="empty" style="display:none">
-    <div class="empty-icon">🎬</div>
     <h3>No titles found</h3>
     <p>Try a different search term or check your spelling.</p>
   </div>
@@ -899,8 +897,8 @@ const I18N = {
     play: 'Play',
     season: 'Season',
     episode: 'Episode',
-    film: '🎬 Film',
-    series: '📺 Series',
+    film: 'Film',
+    series: 'Series',
     badgeFilm: 'Film',
     badgeSeries: 'Series',
     badgeDigital: 'Digital',
@@ -959,8 +957,8 @@ const I18N = {
     play: '播放',
     season: '季',
     episode: '集',
-    film: '🎬 电影',
-    series: '📺 电视剧',
+    film: '电影',
+    series: '电视剧',
     badgeFilm: '电影',
     badgeSeries: '电视剧',
     badgeDigital: '数字版',
@@ -1306,7 +1304,7 @@ function makeCard(item, { drDate = null } = {}) {
     ${showDrBadge ? `<span class="card-dr-badge"><span class="card-dr-dot"></span>${t('badgeDigital')}</span>` : ''}
     ${imgSrc
       ? `<img class="card-poster" src="${imgSrc}" alt="${esc(title)}" loading="lazy" onerror="this.parentNode.replaceChild(makePlaceholder('${esc(title).replace(/'/g,"")}'),this)">`
-      : `<div class="card-poster-placeholder"><span style="font-size:2rem">🎬</span><span>${esc(title)}</span></div>`}
+      : `<div class="card-poster-placeholder"><span>${esc(title)}</span></div>`}
     <div class="card-info">
       <div class="card-info-top">
         <span class="mini-play"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
@@ -1323,7 +1321,7 @@ function makeCard(item, { drDate = null } = {}) {
 function makePlaceholder(title) {
   const d = document.createElement('div');
   d.className = 'card-poster-placeholder';
-  d.innerHTML = `<span style="font-size:2rem">🎬</span><span>${esc(title || '')}</span>`;
+  d.innerHTML = `<span>${esc(title || '')}</span>`;
   return d;
 }
 
