@@ -20,30 +20,14 @@ test('prepared desktop and Android homepages include their shared dependency and
     vm.runInContext(script.slice(0,script.indexOf('let currentFilter')),c);
   }
 });
-test('legacy defaults migrate once while fresh automatic defaults remain automatic',()=>{
+test('stored defaults are preserved without migration or automatic-source flags',()=>{
   for(const id of [1,2,4,6]) {
-    const c=context({tflix_server:String(id)});
-    assert.equal(c.localStorage.getItem('tflix_manual_source_v1'),'1');
+    const c=context({tflix_server:String(id),tflix_manual_source_v1:'0'});
     const script=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
     vm.runInContext(script.slice(0,script.indexOf('let currentFilter')),c);
     assert.equal(vm.runInContext('currentServer',c),id);
+    assert.equal(c.localStorage.getItem('tflix_manual_source_v1'),'0');
   }
-  const c=context();assert.equal(c.localStorage.getItem('tflix_manual_source_v1'),'0');
-  c.localStorage.setItem('tflix_server','4');vm.runInContext(config,c);
-  assert.equal(c.localStorage.getItem('tflix_manual_source_v1'),'0');
-});
-test('a plain webpage document load cancels the startup timeout without claiming media readiness',()=>{
-  const frame={},timer={};let cancelled=false,hidden=false;
-  const c={frame,window:{},$:()=>frame,sourceCheckTimer:timer,clearTimeout:t=>cancelled=t===timer,
-    loader:{classList:{add:()=>hidden=true}},state:{server:4},sourceStatuses:{},
-    updateServerCards(){},updateSourceStatus(){},t:k=>k,playerMediaDetected:false};
-  vm.createContext(c);
-  const start=stream.indexOf('  frame.onload = '),end=stream.indexOf('  // Use replace',start);
-  vm.runInContext(stream.slice(start,end),c);frame.onload();
-  assert.equal(cancelled,true);assert.equal(hidden,true);assert.equal(c.playerMediaDetected,false);
-  assert.equal(c.sourceStatuses[4],'selected');
-  cancelled=false;hidden=false;c.window.__TFLIX_PLAYER_ORIGIN__='http://127.0.0.1:1234/';frame.onload();
-  assert.equal(cancelled,false);assert.equal(hidden,false);
 });
 test('source handoff retains current episode progress but clears it on episode changes',()=>{
   const c={state:{type:'tv',id:'1399',season:1,episode:1,server:4},progressContentKey:'tv:1399:1:1',

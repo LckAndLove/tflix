@@ -8,9 +8,10 @@ function failure(auto=true,current=true){
  vm.createContext(context);vm.runInContext(html.slice(html.indexOf('function showPlaybackFailure('),html.indexOf('let chromeTimer=')),context);
  return {context,elements};
 }
-test('permanent refusal advances automatic probing without treating loading as failure',()=>{
- const {context}=failure();context.receive({data:{type:'tflix:embed-blocked'},source:{}});
- assert.equal(context.next,1);assert.equal(context.sourceStatuses[4],'failed');
+test('permanent refusal keeps the chosen provider and shows manual recovery',()=>{
+ const {context,elements}=failure();context.receive({data:{type:'tflix:embed-blocked'},source:{}});
+ assert.equal(context.next,0);assert.equal(context.sourceStatuses[4],'failed');
+ assert.equal(elements['playback-failure'].hidden,false);assert.equal(context.state.server,4);
 });
 test('manual refusal presents recovery without overriding the manual source',()=>{
  const {context,elements}=failure(false);context.receive({data:{type:'tflix:embed-blocked'},source:{}});

@@ -6,7 +6,7 @@ const html=fs.readFileSync('stream/index.html','utf8');
 const sources=require('../stream/source-config.js');
 
 test('cross-source fallback adds only the destination provider start-time parameter',()=>{
-  const start=html.indexOf('function sourceUrlFor('),end=html.indexOf('\nfunction readSourceHealth()',start);
+  const start=html.indexOf('function sourceUrlFor('),end=html.indexOf('\n/* ─── PLAYER ─── */',start);
   const context={
     URL,location:{href:'https://tflix.example/stream/index.html'},SERVERS:sources,
     serverUrlResolvers:Object.fromEntries(sources.map(source=>[source.id,source])),
@@ -17,10 +17,7 @@ test('cross-source fallback adds only the destination provider start-time parame
   const raw=context.sourceUrlFor(6),url=new URL(raw);
   assert.equal(url.searchParams.get('startAt'),'156');
   assert.equal(context.sourceTimeParameterApplied,true);
-  context.sourceTimeParameterApplied=false;
-  const probe=new URL(context.sourceUrlFor(6,true));
-  assert.equal(probe.searchParams.has('startAt'),false);
-  assert.equal(context.sourceTimeParameterApplied,false);
+
 });
 
 function progressListener(parameterApplied){
@@ -35,7 +32,7 @@ function progressListener(parameterApplied){
   vm.createContext(context);vm.runInContext(html.slice(start,end),context);
   const sent=[],source={postMessage:data=>sent.push(data)};
   receive({source,data:{type:'tflix:media-ready',duration:900,currentTime:0}});
-  return {context,sent};
+  return {context,sent,receive,source};
 }
 
 test('provider URL startAt suppresses a duplicate injected seek',()=>{
@@ -52,5 +49,11 @@ test('providers without a URL parameter receive a seek command through the bridg
 
 test('an early zero-time ready event does not erase the handoff position',()=>{
   const {context}=progressListener(true);
+  assert.equal(context.latestMediaProgress.currentTime,120);
+});
+
+test('duplicate readiness cannot erase a retained manual handoff position',()=>{
+  const {context,receive,source}=progressListener(true);
+  receive({source,data:{type:'tflix:media-ready',duration:900,currentTime:0}});
   assert.equal(context.latestMediaProgress.currentTime,120);
 });

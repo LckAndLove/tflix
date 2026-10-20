@@ -998,9 +998,7 @@ const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I1
 
 /* ─── STATE ─── */
 const STORAGE_KEY = 'tflix_server';
-const MANUAL_SOURCE_KEY = 'tflix_manual_source_v1';
 const EPISODE_SERVER_STORAGE_KEY = 'tflix_episode_servers_v1';
-const SERVER_DEFAULT_MIGRATION_KEY = 'tflix_server_default_migrated';
 const DEFAULT_SERVER = 4; // Ekko (CineSrc) is the verified working source.
 function episodeServerKey(id, season, episode) { return `tv:${id}:${season}:${episode}`; }
 function readEpisodeServers() {
@@ -1015,19 +1013,7 @@ function rememberedEpisodeServer(id, season, episode) {
   const server=Number(typeof value==='object'?value?.server:value);
   return SERVERS.some(s=>s.id===server) ? server : null;
 }
-let currentServer = (() => {
-  // Older builds defaulted to Rakan/Bard, both of which can hang on some
-  // episodes. Move those old defaults once; preserve any later user choice.
-  if (localStorage.getItem(SERVER_DEFAULT_MIGRATION_KEY) !== 'ekko') {
-    const previous = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-    if (localStorage.getItem(MANUAL_SOURCE_KEY) !== '1' && (!previous || previous === 1 || previous === 2)) {
-      localStorage.setItem(STORAGE_KEY, String(DEFAULT_SERVER));
-    }
-    localStorage.setItem(SERVER_DEFAULT_MIGRATION_KEY, 'ekko');
-  }
-  const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-  return SERVERS.some(s=>s.id===saved) ? saved : DEFAULT_SERVER;
-})();
+let currentServer = SERVERS.some(source=>source.id===Number(localStorage.getItem(STORAGE_KEY))) ? Number(localStorage.getItem(STORAGE_KEY)) : DEFAULT_SERVER;
 let currentFilter = 'all';
 let searchResults = [];
 let currentModalItem = null;
@@ -1259,8 +1245,7 @@ function playerUrl(item, season = 1, episode = 1) {
   const type = mediaOf(item);
   const remembered = type === 'tv' ? rememberedEpisodeServer(item.id, season, episode) : null;
   const server = remembered || currentServer;
-  const manual = Boolean(remembered || localStorage.getItem(MANUAL_SOURCE_KEY) === '1');
-  const p = new URLSearchParams({ server, manual: manual ? '1' : '0' });
+  const p = new URLSearchParams({ server });
   if (type === 'movie') {
     p.set('type', 'movie'); p.set('id', item.id);
   } else {

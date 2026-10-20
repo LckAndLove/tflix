@@ -5,7 +5,6 @@
   'use strict';
   if (window.top === window.self || window.__TFLIX_MEDIA_MONITOR__) return;
   window.__TFLIX_MEDIA_MONITOR__ = true;
-  const STALL_TIMEOUT_MS = 8000;
   let failureReported = false;
 
   function report(type, detail = {}) {
@@ -32,24 +31,11 @@
   function inspect(video) {
     if (video.__tflixObserved) return;
     video.__tflixObserved = true;
-    let hasMedia = false,lastProgress=0,resumeTarget=null,lastAdvanceAt=Date.now(),lastVideoTime=video.currentTime||0;
+    let hasMedia = false,lastProgress=0,resumeTarget=null;
     function identity(){if(typeof location==='undefined' || location.hostname!=='cinesrc.st')return {};const match=location.pathname.match(/^\/embed\/(tv|movie)\/(\d+)/);if(!match)return {};const params=new URLSearchParams(location.search);return {mediaType:match[1],mediaId:match[2],season:Number(params.get('s')||1),episode:Number(params.get('e')||1)};}
     let mediaIdentity=identity();
     const progress=()=>({...mediaIdentity,currentTime:video.currentTime,duration:video.duration});
-    const trackTime=()=>{
-      const now=Date.now(),current=video.currentTime||0;
-      if(Math.abs(current-lastVideoTime)>.05){lastVideoTime=current;lastAdvanceAt=now;}
-      if(hasMedia && now-lastProgress>=5000){lastProgress=now;report('tflix:media-progress',progress());}
-    };
-    video.addEventListener('timeupdate',trackTime);
-    video.addEventListener('playing',()=>{lastVideoTime=video.currentTime||0;lastAdvanceAt=Date.now();}, {passive:true});
-    video.addEventListener('seeking',()=>{lastVideoTime=video.currentTime||0;lastAdvanceAt=Date.now();}, {passive:true});
-    video.addEventListener('seeked',()=>{lastVideoTime=video.currentTime||0;lastAdvanceAt=Date.now();}, {passive:true});
-    setInterval(()=>{
-      if(!hasMedia || video.paused || video.seeking || video.ended){lastVideoTime=video.currentTime||0;lastAdvanceAt=Date.now();return;}
-      trackTime();
-      if(Date.now()-lastAdvanceAt>=STALL_TIMEOUT_MS)reportFailure();
-    },1000);
+    video.addEventListener('timeupdate',()=>{const now=Date.now();if(hasMedia && now-lastProgress>=5000){lastProgress=now;report('tflix:media-progress',progress());}});
     video.addEventListener('pause',()=>{if(hasMedia)report('tflix:media-progress',progress());});
     video.addEventListener('ended',()=>{if(hasMedia)report('tflix:media-progress',{...progress(),ended:true});});
     video.addEventListener('seeked',()=>{if(resumeTarget!==null && Math.abs(video.currentTime-resumeTarget)<1){resumeTarget=null;report('tflix:media-resumed',progress());}});

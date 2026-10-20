@@ -9,14 +9,5 @@
     { id: 6, name: 'Ryze', internalName: 'vidlink', host: 'vidlink.pro', requireReferer: true, sandboxEnabled: false, startTimeParam:'startAt', quirks: ['rejects-sandbox'], buildUrl(type, tmdbId, season, episode) { return type === 'movie' ? `https://vidlink.pro/movie/${tmdbId}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?title=true&poster=true&autoplay=true&nextbutton=true`; } }
   ];
   root.TFLIX_SOURCE_CONFIG = Object.freeze(sources.map(source => Object.freeze(source)));
-  // Old releases stored explicit defaults without a separate manual flag.
-  // Record fresh installs too, so their generated default is never migrated later.
-  try {
-    const storage = root.localStorage;
-    if (storage && storage.getItem('tflix_manual_source_v1') === null) {
-      const saved = Number(storage.getItem('tflix_server'));
-      storage.setItem('tflix_manual_source_v1', sources.some(source => source.id === saved) ? '1' : '0');
-    }
-  } catch (_) {}
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TFLIX_SOURCE_CONFIG;
 })(typeof window !== 'undefined' ? window : globalThis);
