@@ -14,7 +14,7 @@
   <link rel="icon" href="./assets/icons/icon_128.png" sizes="128x128">
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
 
     :root {
       --bg:        #0a0a0d;
@@ -57,7 +57,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    input, textarea, [contenteditable="true"] {
+    input, textarea, [contenteditable]:not([contenteditable="false"]) {
       -webkit-user-select: text;
       user-select: text;
     }

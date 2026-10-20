@@ -61,6 +61,9 @@ class MainActivity : Activity() {
 
         webView = WebView(this)
         webView.setBackgroundColor(Color.parseColor("#0a0a0d"))
+        // Disable the native long-press selection/context menu across the WebView,
+        // including embedded cross-origin player frames that page CSS cannot reach.
+        webView.setOnLongClickListener { true }
         setContentView(webView)
 
         val s = webView.settings

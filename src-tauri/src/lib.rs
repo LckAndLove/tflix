@@ -8,6 +8,7 @@ mod player_bridge;
 const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 
 const INIT_SCRIPT: &str = include_str!("init.js");
+const INTERACTION_GUARD_SCRIPT: &str = include_str!("interaction_guard.js");
 const PLAYER_COMPAT_SCRIPT: &str = include_str!("player_compat.js");
 const SUBTITLE_LAYOUT_SCRIPT: &str = include_str!("subtitle_layout.js");
 const SUBTITLE_SESSION_SCRIPT: &str = include_str!("subtitle_session.js");
@@ -111,6 +112,7 @@ pub fn run() {
                 .resizable(true)
                 .initialization_script(&player_script)
                 .initialization_script(INIT_SCRIPT)
+                .initialization_script_for_all_frames(INTERACTION_GUARD_SCRIPT)
                 .initialization_script_for_all_frames(PLAYER_COMPAT_SCRIPT)
                 .initialization_script_for_all_frames(SUBTITLE_COMPAT_SCRIPT)
                 .initialization_script_for_all_frames(SUBTITLE_SESSION_SCRIPT)
