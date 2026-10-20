@@ -49,7 +49,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE5NkU5ODMyQjkxNTZBNUYKUldSZmFoVzVNcGh1cWZaM1VvRlZDM2FWWEsxYnFSc3E3STRjaTZ6MC9XWnBBelVpdDl0cDlMY2gK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCMDA5QUQyNTBCRTEwRUUKUldUdUVMNVEwcG9BeTBDVk53ZjBMdmtKTERyMlN4TjlsVnh0V1FOeFRvWE1tNU42R3B1bmc1Z1oK",
       "endpoints": [
         "https://github.com/LckAndLove/tflix/releases/latest/download/latest.json"
       ]
