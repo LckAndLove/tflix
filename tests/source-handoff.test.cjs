@@ -49,3 +49,8 @@ test('providers without a URL parameter receive a seek command through the bridg
   assert.deepEqual(JSON.parse(JSON.stringify(sent)),[{type:'tflix:resume',time:120,duration:900}]);
   assert.equal(context.pendingSourceSeek,null);
 });
+
+test('an early zero-time ready event does not erase the handoff position',()=>{
+  const {context}=progressListener(true);
+  assert.equal(context.latestMediaProgress.currentTime,120);
+});

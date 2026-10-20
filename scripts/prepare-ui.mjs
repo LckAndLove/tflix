@@ -42,6 +42,7 @@ await processHtml('index.html', 'index.html');
 await processHtml('stream/index.html', 'stream/index.html');
 
 for (const { name, base } of targets) {
+  await cp(new URL('stream/source-config.js', root), new URL('stream/source-config.js', base));
   await cp(fileURLToPath(new URL('assets/', root)), fileURLToPath(new URL('assets/', base)), { recursive: true });
   console.log(`[prepare-ui] (${name}) Successfully copied assets.`);
 }

@@ -1020,7 +1020,7 @@ let currentServer = (() => {
   // episodes. Move those old defaults once; preserve any later user choice.
   if (localStorage.getItem(SERVER_DEFAULT_MIGRATION_KEY) !== 'ekko') {
     const previous = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-    if (!previous || previous === 1 || previous === 2) {
+    if (localStorage.getItem(MANUAL_SOURCE_KEY) !== '1' && (!previous || previous === 1 || previous === 2)) {
       localStorage.setItem(STORAGE_KEY, String(DEFAULT_SERVER));
     }
     localStorage.setItem(SERVER_DEFAULT_MIGRATION_KEY, 'ekko');

@@ -245,7 +245,7 @@ const I18N = {
     nextEp: '下一集',
     nextEpTitle: '下一集：第 %s 季 第 %s 集',
     noNextEp: '没有下一集',
-    sourceManual: '正在寻找最佳线路…',
+    sourceManual: '播放器已加载，可在设置中选择备用线路',
     sourceSelectedLabel: '已选择',
     sourceChecking: '正在寻找最佳线路…',
     sourceReady: '%s 找到视频 · 等待开始播放',
@@ -322,6 +322,7 @@ let sourceLoadStartedAt = 0;
 let sourceAttemptReadyRecorded = false;
 let sourceAttemptFailureRecorded = false;
 let latestMediaProgress = null;
+let progressContentKey = null;
 let pendingSourceSeek = null;
 let sourceTimeParameterApplied = false;
 
@@ -525,7 +526,14 @@ window.addEventListener('message', event => {
 });
 
 /* ─── PLAYER ─── */
+function syncProgressContent() {
+  const key=[state.type,state.id,state.season||0,state.episode||0].join(':');
+  if(progressContentKey!==key) {
+    latestMediaProgress=null;pendingSourceSeek=null;progressContentKey=key;
+  }
+}
 function loadPlayer(continueAutoTry = false) {
+  syncProgressContent();
   resetWatchPlaybackState();
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
@@ -565,7 +573,17 @@ function loadPlayer(continueAutoTry = false) {
   // iframes (Xayah / Ekko load the real player inside a second iframe).
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
-  frame.onload = () => {};
+  frame.onload = () => {
+    if ($('player') !== frame || window.__TFLIX_PLAYER_ORIGIN__) return;
+    // A plain webpage can observe document load, but cannot inspect cross-origin media.
+    // Do not claim media health or keep switching a potentially playing iframe.
+    clearTimeout(sourceCheckTimer);
+    sourceCheckTimer=null;
+    loader.classList.add('hide');
+    sourceStatuses[state.server]='selected';
+    updateServerCards();
+    updateSourceStatus('manual', t('sourceManual'));
+  };
   // Use replace so iframe loads don't pollute the browser history stack
   // Desktop custom protocols cannot send an HTTP Referer to embed providers.
   // The loopback wrapper supplies one without moving the app or its storage.
@@ -1024,6 +1042,7 @@ window.addEventListener('message',async event=>{
   if(!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
   const previousServer=state.server;
   state.season=season;state.episode=episode;
+  syncProgressContent();
   $('season-select').value=String(season);
   resetWatchPlaybackState();updateTitleBar();syncUrl();
   await populateEpisodes(true);
@@ -1052,6 +1071,8 @@ window.addEventListener('message',event=>{
     if(pendingSourceSeek) {
       const transfer=pendingSourceSeek;pendingSourceSeek=null;
       if(transfer.fromServer!==state.server && transfer.time>=5 && transfer.time<duration-15) {
+        // The ready event may precede the provider applying its URL seek.
+        latestMediaProgress={currentTime:transfer.time,duration,server:state.server,updatedAt:Date.now()};
         if(!sourceTimeParameterApplied) event.source.postMessage({type:'tflix:resume',time:transfer.time,duration},'*');
         return;
       }
