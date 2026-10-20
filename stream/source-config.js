@@ -8,6 +8,9 @@
     { id: 5, name: 'Naafiri', internalName: 'vidfast', host: 'vidfast.vc', requireReferer: true, sandboxEnabled: false, startTimeParam:'startAt', quirks: ['rejects-sandbox'], buildUrl(type, tmdbId, season, episode) { return type === 'movie' ? `https://vidfast.vc/movie/${tmdbId}?autoPlay=true` : `https://vidfast.vc/tv/${tmdbId}/${season}/${episode}?autoPlay=true`; } },
     { id: 6, name: 'Ryze', internalName: 'vidlink', host: 'vidlink.pro', requireReferer: true, sandboxEnabled: false, startTimeParam:'startAt', quirks: ['rejects-sandbox'], buildUrl(type, tmdbId, season, episode) { return type === 'movie' ? `https://vidlink.pro/movie/${tmdbId}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?title=true&poster=true&autoplay=true&nextbutton=true`; } }
   ];
-  root.TFLIX_SOURCE_CONFIG = Object.freeze(sources.map(source => Object.freeze(source)));
+  // Editorial scores from the 2026-10-20 browser sample; see docs/source-review.md.
+  // Display order only: saved choices and manual playback selection take priority.
+  const reviewScores = { 1: 1, 2: 8, 3: 4, 4: 9, 5: 5, 6: 2 };
+  root.TFLIX_SOURCE_CONFIG = Object.freeze(sources.map(source => Object.freeze({ ...source, reviewScore: reviewScores[source.id] })));
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TFLIX_SOURCE_CONFIG;
 })(typeof window !== 'undefined' ? window : globalThis);

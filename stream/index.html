@@ -38,6 +38,7 @@
     .watch-action,.support-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:36px; padding:6px 10px; background:transparent; border:0; border-radius:3px; color:#ddd; font-size:13px; white-space:nowrap; }
     .watch-action:hover,.support-btn:hover,.watch-action[aria-expanded="true"] { background:#ffffff18; color:#fff; }
     .watch-action[aria-expanded="true"] { box-shadow:inset 0 -2px var(--accent); }
+    #sources-btn { width:110px; flex-shrink:0; }
     .source-indicator { width:6px; height:6px; border-radius:50%; background:#777; }
     #sources-btn[data-state="playing"] .source-indicator,#sources-btn[data-state="available"] .source-indicator { background:var(--green); }
     #sources-btn[data-state="checking"] .source-indicator,#sources-btn[data-state="switching"] .source-indicator { background:#e7b65b; }
@@ -511,7 +512,7 @@ function updateTitleBar() {
 function buildServers() {
   const grid = $('server-grid');
   grid.innerHTML = '';
-  SERVERS.forEach(s => {
+  [...SERVERS].sort((a,b)=>b.reviewScore-a.reviewScore || a.id-b.id).forEach(s => {
     const el = document.createElement('button');
     el.className = 'server-card' + (s.id === state.server ? ' selected' : '');
     el.dataset.id = s.id;
