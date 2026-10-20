@@ -96,6 +96,17 @@
     .fatal { display:grid; place-content:center; height:100%; text-align:center; gap:16px; padding:24px; color:#aaa; }
     .fatal h2 { color:#fff; font-size:24px; }
     .fatal a { color:#fff; text-decoration:underline; }
+    .controls-col[data-panel="sources"] { width:min(260px,calc(100% - 24px)); }
+    .controls-col[data-panel="sources"] .drawer-header { padding:12px 14px 0; gap:10px; }
+    .controls-col[data-panel="sources"] .drawer-header h2 { font-size:14px; }
+    .controls-col[data-panel="sources"] .drawer-close { padding:4px 0 4px 8px; font-size:11px; }
+    .controls-col[data-panel="sources"] .panel { padding:12px 14px; }
+    .controls-col[data-panel="sources"] .backup-sources > summary { font-size:11px; }
+    .controls-col[data-panel="sources"] .backup-sources[open] > summary { margin-bottom:8px; }
+    .controls-col[data-panel="sources"] .source-health { padding-bottom:8px; }
+    .controls-col[data-panel="sources"] .source-health-copy { gap:6px; font-size:11px; }
+    .controls-col[data-panel="sources"] .server-card { min-height:34px; padding:7px 8px; gap:8px; }
+    .controls-col[data-panel="sources"] .s-name { font-size:12px; }
     html.keynav .kf { outline:2px solid #fff; outline-offset:2px; }
     @media (max-width:700px) { header { padding:0 12px; gap:8px; height:56px; } main { height:100vh; height:100dvh; } .logo { display:none; } .now-title { font-size:13px; } .ep-tag { display:none; } .watch-action { padding:6px 8px; font-size:12px; } .current-source { display:none; } .support-btn { padding:6px; } .drawer-scrim { top:56px; } .controls-col { right:12px; width:min(380px,calc(100% - 24px)); } }
     @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
@@ -212,7 +223,6 @@ const I18N = {
     sourceReadyLabel: 'Video found',
     sourcePlayingLabel: 'Playing',
     sourceFailedLabel: 'No video',
-    sourceUntestedLabel: 'Not checked',
     metadataFailed:'Details could not be loaded. Playback is still available.', episodeFailed:'Episode list unavailable. Retry this season.', loading: 'Loading…',
     movieFallback: 'Movie',
     seriesFallback: 'Series',
@@ -250,7 +260,6 @@ const I18N = {
     sourceReadyLabel: '找到视频',
     sourcePlayingLabel: '正在播放',
     sourceFailedLabel: '未出画面',
-    sourceUntestedLabel: '尚未检测',
     metadataFailed:'影片信息加载失败，仍可继续播放。', episodeFailed:'选集列表加载失败，请重试本季。', loading: '加载中…',
     movieFallback: '电影',
     seriesFallback: '电视剧',
@@ -451,7 +460,7 @@ function updateServerCards() {
     if (!label) return;
     const labels = {
       selected: t('sourceSelectedLabel'),
-      unknown: t('sourceUntestedLabel'),
+      unknown: '',
       checking: t('sourceCheckingLabel'),
       available: t('sourceReadyLabel'),
       playing: t('sourcePlayingLabel'),
