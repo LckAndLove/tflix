@@ -639,10 +639,11 @@ async function setupTv() {
   });
 
   $('nextep-btn').addEventListener('click', goNextEpisode);
-  const request=languageRequest;
+  const request=languageRequest,initialSeason=state.season,initialEpisode=state.episode;
+  let selectedSeason=initialSeason;
   try {
     const details=await tmdb(`/tv/${state.id}`);
-    if(request!==languageRequest) return;
+    if(request!==languageRequest || state.season!==initialSeason || state.episode!==initialEpisode) return;
     tvData=details;
     if (!tvData || (!tvData.name && !tvData.original_name)) throw new Error('not found');
     state.title = tvData.name || tvData.original_name;
@@ -655,12 +656,15 @@ async function setupTv() {
       .map(s => `<option value="${s.season_number}" data-eps="${s.episode_count}">${sWord} ${s.season_number} · ${s.episode_count} ${epWord}</option>`)
       .join('');
     seasonSel.value = state.season;
-    if (!seasonSel.value) { state.season = parseInt(seasonSel.options[0].value); seasonSel.value = state.season; }
+    if (!seasonSel.value) { selectedSeason = parseInt(seasonSel.options[0].value); seasonSel.value = selectedSeason; }
   } catch {
     updateTitleBar();toast(t('metadataFailed'));
   }
 
-  await populateEpisodes(true);
+  if(await populateEpisodes(true,selectedSeason) && (state.season!==initialSeason || state.episode!==initialEpisode)) {
+    applyEpisodeServerPreference();
+    loadPlayer();
+  }
 
 }
 

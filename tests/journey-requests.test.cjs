@@ -90,3 +90,27 @@ test('watch: successful season switch commits only after episodes load',async()=
  assert.equal(await request,true);assert.equal(s.context.state.season,2);
  assert.equal(s.context.state.episode,2);
 });
+
+function restoredTv({season=5,episode=3,success=true}={}) {
+ const elements={};for(const id of ['tv-panel','season-select','episode-select','nextep-btn'])elements[id]=node();
+ const select=elements['season-select'];select.options=[{value:'1'}];
+ let value='';Object.defineProperty(select,'value',{get:()=>value,set:v=>{value=String(v)==='1'?'1':'';}});
+ const loaded=[],context={$:id=>elements[id],state:{id:123542,season,episode,server:1},goNextEpisode(){},languageRequest:0,currentLang:'zh',t:k=>k,tvData:null,
+  tmdb:async()=>({name:'TV',seasons:[{season_number:1,episode_count:11},{season_number:5,episode_count:0}]}),updateTitleBar(){},toast(){},
+  populateEpisodes:async(_,target)=>{assert.equal(context.state.season,season);if(!success)return false;context.state.season=target;context.state.episode=1;return true;},
+  applyEpisodeServerPreference(){context.state.server=4;},loadPlayer(){loaded.push({...context.state});},closeWatchDrawer(){}};
+ vm.createContext(context);vm.runInContext(watch.slice(watch.indexOf('async function setupTv('),watch.indexOf('async function populateEpisodes(')),context);
+ return {context,loaded};
+}
+test('restoring a filtered season reloads the corrected episode and source',async()=>{
+ const s=restoredTv();await s.context.setupTv();
+ assert.equal(s.loaded.length,1);assert.equal(s.loaded[0].season,1);assert.equal(s.loaded[0].episode,1);assert.equal(s.loaded[0].server,4);
+});
+test('failed recovery of a filtered season leaves the original player state intact',async()=>{
+ const s=restoredTv({success:false});await s.context.setupTv();
+ assert.equal(s.loaded.length,0);assert.equal(s.context.state.season,5);assert.equal(s.context.state.episode,3);
+});
+test('correcting an out-of-range episode also refreshes the player',async()=>{
+ const s=restoredTv({season:1,episode:99});await s.context.setupTv();
+ assert.equal(s.loaded.length,1);assert.equal(s.loaded[0].episode,1);
+});
