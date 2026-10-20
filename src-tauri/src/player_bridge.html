@@ -15,6 +15,14 @@ try {
   // Sandbox every provider, including those that refuse sandboxed embeds.
   // The monitor skips incompatible providers rather than letting them navigate the app.
   frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  // The provider posts episode changes to its immediate wrapper. Forward only
+  // this exact provider frame's validated selection, never arbitrary messages.
+  window.addEventListener('message',event=>{
+    if(source.hostname!=='cinesrc.st' || event.source!==frame.contentWindow || event.origin!==source.origin || event.data?.type!=='cinesrc:nextepisode')return;
+    const {season,episode}=event.data;
+    if(!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
+    window.top.postMessage({type:'tflix:episode-changed',season,episode},'*');
+  });
   frame.src = source.href;
   document.body.appendChild(frame);
 } catch {

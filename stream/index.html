@@ -21,7 +21,7 @@
     a { text-decoration:none; }
     [hidden] { display:none !important; }
     :focus-visible { outline:2px solid #fff; outline-offset:4px; }
-    header { height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; background:linear-gradient(#000b,transparent); position:absolute; inset:0 0 auto; z-index:50; transition:opacity .25s; }
+    header { height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; background:linear-gradient(#000e,#000b); position:absolute; inset:0 0 auto; z-index:50; transition:opacity .25s; }
     body.controls-idle header { opacity:0; pointer-events:none; }
     html.keynav body.controls-idle header:focus-within { opacity:1; pointer-events:auto; }
     .playback-failure { position:absolute; inset:0; z-index:3; display:grid; place-content:center; text-align:center; gap:16px; padding:80px 24px; background:#101010; }
@@ -146,6 +146,7 @@
             <select id="episode-select" class="sel"></select>
           </div>
         </div>
+        <p id="episode-status" role="status"></p><button id="episode-retry" type="button" hidden></button>
         <button class="nextep-btn" id="nextep-btn">
           <span>Next Episode</span>
           <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l11-7zM18 5h2v14h-2z"/></svg>
@@ -197,7 +198,7 @@ const I18N = {
     sourceSelectedLabel: 'Selected',
     sourceChecking: 'Loading %s · waiting up to 90 seconds…',
     sourceReady: 'Video found on %s · waiting to play',
-    sourcePlaying: 'Playing on %s',
+    sourcePaused:'Paused · %s', sourceAutoOff:'Disable automatic recovery', sourcePlaying: 'Playing on %s',
     sourceError: '%s encountered a playback error · trying another source',
     sourceSwitching: '%s did not start · trying %s',
     sourceNotFound: 'No source started · tried all servers',
@@ -210,7 +211,7 @@ const I18N = {
     sourcePlayingLabel: 'Playing',
     sourceFailedLabel: 'No video',
     sourceUntestedLabel: 'Not checked',
-    loading: 'Loading…',
+    metadataFailed:'Details could not be loaded. Playback is still available.', episodeFailed:'Episode list unavailable. Retry this season.', loading: 'Loading…',
     movieFallback: 'Movie',
     seriesFallback: 'Series',
     fatalTitle: 'Title not found',
@@ -237,7 +238,7 @@ const I18N = {
     sourceSelectedLabel: '已选择',
     sourceChecking: '正在加载 %s，最多等待 90 秒…',
     sourceReady: '%s 找到视频 · 等待开始播放',
-    sourcePlaying: '正在播放 · %s',
+    sourcePaused:'已暂停 · %s', sourceAutoOff:'关闭自动换源', sourcePlaying: '正在播放 · %s',
     sourceError: '%s 播放解码失败，正在尝试其他源',
     sourceSwitching: '%s 没有开始播放，正在尝试 %s',
     sourceNotFound: '已尝试全部播放源，暂未找到可播放视频',
@@ -250,7 +251,7 @@ const I18N = {
     sourcePlayingLabel: '正在播放',
     sourceFailedLabel: '未出画面',
     sourceUntestedLabel: '尚未检测',
-    loading: '加载中…',
+    metadataFailed:'影片信息加载失败，仍可继续播放。', episodeFailed:'选集列表加载失败，请重试本季。', loading: '加载中…',
     movieFallback: '电影',
     seriesFallback: '电视剧',
     fatalTitle: '未找到影视内容',
@@ -285,15 +286,15 @@ const serverUrlResolvers = {
   1: (p) => p.type === 'movie' ? `https://vixsrc.to/movie/${p.id}?autoPlay=true&lang=en` : `https://vixsrc.to/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true&lang=en`,                                   // Rakan
   2: (p) => p.type === 'movie' ? `https://moviesapi.to/movie/${p.id}` : `https://moviesapi.to/tv/${p.id}-${p.season}-${p.episode}`,                                                                            // Bard
   3: (p) => p.type === 'movie' ? `https://vidsrc.sh/embed/movie?tmdb=${p.id}&autoplay=1` : `https://vidsrc.sh/embed/tv?tmdb=${p.id}&season=${p.season}&episode=${p.episode}&autoplay=1&autonext=1`,                        // Xayah
-  4: (p) => p.type === 'movie' ? `https://cinesrc.st/embed/movie/${p.id}?autoplay=true&prioritize=true&lastserver=wave` : `https://cinesrc.st/embed/tv/${p.id}?s=${p.season}&e=${p.episode}&autoplay=true&autonext=true&prioritize=true&lastserver=wave`, // Ekko
+  4: (p) => p.type === 'movie' ? `https://cinesrc.st/embed/movie/${p.id}?autoplay=true&prioritize=true&lastserver=wave` : `https://cinesrc.st/embed/tv/${p.id}?s=${p.season}&e=${p.episode}&autoplay=true&autonext=false&prioritize=true&lastserver=wave`, // Ekko
   5: (p) => p.type === 'movie' ? `https://vidfast.vc/movie/${p.id}?autoPlay=true` : `https://vidfast.vc/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true`,                                                   // Naafiri
   6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
 };
 
-// Xayah explicitly refuses sandboxed embedding. Keep isolation, and exclude
+// Xayah and Naafiri explicitly refuse sandboxed embedding. Keep isolation, and exclude
 // this confirmed incompatible provider rather than serving its error page.
-const UNSUPPORTED_SOURCES = new Set([3]);
-const AUTO_SOURCE_ORDER = [4, 5, 6, 1, 2];
+const UNSUPPORTED_SOURCES = new Set([3,5]);
+const AUTO_SOURCE_ORDER = [4, 6, 1, 2];
 const SOURCE_CHECK_TIMEOUT_MS = 90000;
 const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
 
@@ -302,13 +303,14 @@ const $ = id => document.getElementById(id);
 const tmdb = async path => {
   const sep = path.includes('?') ? '&' : '?';
   const lang = currentLang === 'zh' ? 'zh-CN' : 'en-US';
-  const r = await fetch(`${API_BASE}${path}${sep}language=${lang}`, { headers: HEADERS });
+  const r = await fetch(`${API_BASE}${path}${sep}language=${lang}`, { headers: HEADERS, signal:AbortSignal.timeout(12000) });
   if (!r.ok) throw new Error('TMDB request failed');
   return r.json();
 };
 
 let state = null;          // { type, id, season, episode, server, title }
 let tvData = null;         // /tv/{id} details
+let episodeRequest=0,languageRequest=0;
 const seasonCache = {};    // cached season episode lists
 let sourceStatuses = {};
 let sourceSequence = [];
@@ -364,7 +366,8 @@ function loadPlayer(continueAutoTry = false) {
 
   if (!continueAutoTry) {
     clearTimeout(sourceCheckTimer);
-    sourceStatuses = {};
+    const contentKey=[state.type,state.id,state.season||0,state.episode||0].join(':');
+    if(state._sourceStatusKey!==contentKey){sourceStatuses={};state._sourceStatusKey=contentKey;}
     sourceSequence = [state.server, ...AUTO_SOURCE_ORDER.filter(id => id !== state.server)];
     sourceSequenceIndex = 0;
     playerMediaDetected = false;
@@ -392,7 +395,7 @@ function loadPlayer(continueAutoTry = false) {
   // iframes (Xayah / Ekko load the real player inside a second iframe).
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
-  frame.onload = () => loader.classList.add('hide');
+  frame.onload = () => {if($('player')===frame)loader.classList.add('hide');};
   // Use replace so iframe loads don't pollute the browser history stack
   // Desktop custom protocols cannot send an HTTP Referer to embed providers.
   // The loopback wrapper supplies one without moving the app or its storage.
@@ -410,7 +413,7 @@ function loadPlayer(continueAutoTry = false) {
     }, SOURCE_CHECK_TIMEOUT_MS);
   }
 
-  setTimeout(() => loader.classList.add('hide'), 4000); // fail-safe
+  setTimeout(() => {if($('player')===frame)loader.classList.add('hide');}, 4000); // fail-safe
   syncUrl();
   if (state.title) updateTitleBar();
 }
@@ -426,7 +429,7 @@ function updateSourceStatus(status, message) {
   $('sources-btn').title = message;
   $('current-source').textContent = serverName(state.server);
   label.textContent = message;
-  $('retry-source-btn').textContent = t(autoTryEnabled ? 'sourceStop' : 'sourceRetry');
+  $('retry-source-btn').textContent = t(autoTryEnabled ? (playerMediaDetected?'sourceAutoOff':'sourceStop') : 'sourceRetry');
 }
 
 function updateServerCards() {
@@ -604,6 +607,7 @@ function applyTranslations() {
 
 async function changeLanguage(newLang) {
   if (newLang === currentLang) return;
+  const ticket=++languageRequest;episodeRequest++;
   currentLang = newLang;
   localStorage.setItem(LANG_STORAGE_KEY, newLang);
   applyTranslations();
@@ -612,7 +616,9 @@ async function changeLanguage(newLang) {
   // Re-fetch title and details with new language
   if (state.type === 'tv') {
     try {
-      tvData = await tmdb(`/tv/${state.id}`);
+      const data=await tmdb(`/tv/${state.id}`);
+      if(ticket!==languageRequest) return;
+      tvData=data;
       state.title = tvData.name || tvData.original_name;
       updateTitleBar();
       for (const k in seasonCache) delete seasonCache[k];
@@ -629,6 +635,7 @@ async function changeLanguage(newLang) {
   } else {
     try {
       const data = await tmdb(`/movie/${state.id}`);
+      if(ticket!==languageRequest) return;
       state.title = data.title || data.original_title;
       updateTitleBar();
     } catch {}
@@ -655,8 +662,22 @@ async function setupTv() {
   const seasonSel  = $('season-select');
   const episodeSel = $('episode-select');
 
+  seasonSel.addEventListener('change', async () => {
+    state.season = parseInt(seasonSel.value) || 1;
+    state.episode = 1;
+    if(await populateEpisodes(true)) loadPlayer();
+  });
+  episodeSel.addEventListener('change', () => {
+    state.episode = parseInt(episodeSel.value) || 1;
+    loadPlayer();closeWatchDrawer();
+  });
+
+  $('nextep-btn').addEventListener('click', goNextEpisode);
+  const request=languageRequest;
   try {
-    tvData = await tmdb(`/tv/${state.id}`);
+    const details=await tmdb(`/tv/${state.id}`);
+    if(request!==languageRequest) return;
+    tvData=details;
     if (!tvData || (!tvData.name && !tvData.original_name)) throw new Error('not found');
     state.title = tvData.name || tvData.original_name;
     updateTitleBar();
@@ -670,37 +691,31 @@ async function setupTv() {
     seasonSel.value = state.season;
     if (!seasonSel.value) { state.season = parseInt(seasonSel.options[0].value); seasonSel.value = state.season; }
   } catch {
-    showFatal();
-    return;
+    updateTitleBar();toast(t('metadataFailed'));
   }
 
   await populateEpisodes(true);
 
-  seasonSel.addEventListener('change', async () => {
-    state.season = parseInt(seasonSel.value) || 1;
-    state.episode = 1;
-    await populateEpisodes(true);
-    loadPlayer();
-  });
-  episodeSel.addEventListener('change', () => {
-    state.episode = parseInt(episodeSel.value) || 1;
-    loadPlayer();
-  });
 
-  $('nextep-btn').addEventListener('click', goNextEpisode);
 }
 
 async function populateEpisodes(setToState) {
+  const ticket=++episodeRequest,id=state.id,season=state.season,lang=currentLang;
+  const current=()=>ticket===episodeRequest && state.id===id && state.season===season && currentLang===lang;
   const seasonSel  = $('season-select');
   const episodeSel = $('episode-select');
   const opt = seasonSel.options[seasonSel.selectedIndex];
-  const fallbackCount = parseInt(opt?.dataset?.eps || 24);
+  $('episode-select').disabled=true;
+  $('nextep-btn').disabled=true;
+  $('episode-status').textContent=t('loading');
+  $('episode-retry').hidden=true;
 
   episodeSel.innerHTML = `<option>${t('loading')}</option>`;
-  const key = `${state.id}-${state.season}`;
+  const key = `${lang}-${id}-${season}`;
   try {
     let data = seasonCache[key];
-    if (!data) { data = await tmdb(`/tv/${state.id}/season/${state.season}`); seasonCache[key] = data; }
+    if (!data) { data = await tmdb(`/tv/${id}/season/${season}`); seasonCache[key] = data; }
+    if(!current()) return false;
     const eps = data?.episodes || [];
     if (!eps.length) throw new Error('no eps');
     const epPrefix = currentLang === 'zh' ? '第 ' : 'Ep ';
@@ -711,21 +726,27 @@ async function populateEpisodes(setToState) {
       return `<option value="${ep.episode_number}">${epPrefix}${ep.episode_number}${epSuffix}${name}${d ? ' · ' + d : ''}</option>`;
     }).join('');
   } catch {
-    episodeSel.innerHTML = Array.from({ length: fallbackCount }, (_, i) => {
-      const epPrefix = currentLang === 'zh' ? `第 ${i+1} 集` : `Episode ${i+1}`;
-      return `<option value="${i+1}">${epPrefix}</option>`;
-    }).join('');
+    if(!current()) return false;
+    episodeSel.innerHTML='<option>—</option>';
+    $('episode-status').textContent=t('episodeFailed');
+    $('episode-retry').textContent=currentLang==='zh'?'重试本季':'Retry season';
+    $('episode-retry').hidden=false;
+    return false;
   }
+  episodeSel.disabled=false;
+  $('episode-status').textContent='';
 
   if (setToState) {
     if (![...episodeSel.options].some(o => parseInt(o.value) === state.episode)) state.episode = 1;
     episodeSel.value = state.episode;
   }
   updateNextBtn();
+  return true;
 }
+$('episode-retry').addEventListener('click',async()=>{if(await populateEpisodes(true))loadPlayer();});
 
 function episodeCountFor(seasonNum) {
-  const cached = seasonCache[`${state.id}-${seasonNum}`];
+  const cached = seasonCache[`${currentLang}-${state.id}-${seasonNum}`];
   if (cached?.episodes?.length) return cached.episodes.length;
   const s = (tvData?.seasons || []).find(x => x.season_number === seasonNum);
   return s ? s.episode_count : null;
@@ -753,21 +774,22 @@ async function goNextEpisode() {
   const seasonChanged = next.season !== state.season;
   state.season = next.season;
   state.episode = next.episode;
-  if (seasonChanged) { $('season-select').value = state.season; await populateEpisodes(true); }
+  if (seasonChanged) { $('season-select').value = state.season; if(!await populateEpisodes(true))return; }
   else $('episode-select').value = state.episode;
   updateNextBtn();
-  loadPlayer();
+  loadPlayer();closeWatchDrawer();
 }
 
 /* ─── MOVIE TITLE ─── */
 async function setupMovie() {
+  const lang=currentLang;
   try {
     const data = await tmdb(`/movie/${state.id}`);
+    if(lang!==currentLang) return;
     if (!data || (!data.title && !data.original_title)) throw new Error('not found');
     state.title = data.title || data.original_title;
   } catch {
-    showFatal();
-    return;
+    toast(t('metadataFailed'));
   }
   updateTitleBar();
 }
@@ -799,6 +821,51 @@ function toast(msg){
   clearTimeout(t._tm);
   t._tm = setTimeout(() => t.classList.remove('show'), 2200);
 }
+
+window.addEventListener('message',event=>{if(event.data?.type==='tflix:media-paused' && isCurrentPlayerFrame(event.source) && playerMediaDetected)updateSourceStatus('available',t('sourcePaused').replace('%s',serverName(state.server)));});
+
+/* ─── PROVIDER EPISODE SELECTION ─── */
+window.addEventListener('message',async event=>{
+  if(event.data?.type!=='tflix:episode-changed' || !isCurrentPlayerFrame(event.source) || state?.type!=='tv')return;
+  const {season,episode}=event.data;
+  if(!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
+  state.season=season;state.episode=episode;
+  $('season-select').value=String(season);
+  resetWatchPlaybackState();updateTitleBar();syncUrl();
+  await populateEpisodes(true);
+});
+
+/* ─── WATCH PROGRESS ─── */
+// Resume only the same provider and matching media duration. Never persist URLs
+// or carry one episode's position into another episode or provider edition.
+const resumedFrames=new WeakSet();
+function progressKey(){return [state.type,state.id,state.season||0,state.episode||0,state.server].join(':');}
+function readProgress(){try{const data=JSON.parse(localStorage.getItem('tflix_progress_v1')||'{}');if(!data||typeof data!=='object'||Array.isArray(data))return {};return Object.fromEntries(Object.entries(data).filter(([,v])=>v&&Number.isFinite(v.time)&&Number.isFinite(v.duration)&&Number.isFinite(v.updatedAt)));}catch{return {};}}
+window.addEventListener('message',event=>{
+  const type=event.data?.type;
+  if(!['tflix:media-ready','tflix:media-progress','tflix:media-resumed'].includes(type) || !state || !isCurrentPlayerFrame(event.source)) return;
+  const {currentTime,duration,ended,mediaType,mediaId,season,episode}=event.data;
+  if(mediaId && (String(mediaId)!==String(state.id)||mediaType!==state.type||(state.type==='tv'&&(season!==state.season||episode!==state.episode))))return;
+  if(!Number.isFinite(duration)||duration<60) return;
+  const key=progressKey(),entries=readProgress();
+  if(type==='tflix:media-ready') {
+    if(resumedFrames.has(event.source)) return;
+    resumedFrames.add(event.source);
+    const saved=entries[key];
+    if(saved && Date.now()-saved.updatedAt<30*86400000 && Math.abs(saved.duration-duration)<=2 && saved.time>=5 && saved.time<duration-15) {
+      event.source.postMessage({type:'tflix:resume',time:saved.time,duration},'*');
+    }
+    return;
+  }
+  if(type==='tflix:media-resumed') {toast(currentLang==='zh'?'已继续上次观看':'Resumed from your last position');return;}
+  if(!Number.isFinite(currentTime)||currentTime<5||currentTime>duration) return;
+  if(ended || duration-currentTime<15) delete entries[key];
+  else entries[key]={time:currentTime,duration,updatedAt:Date.now()};
+  const recent=Object.entries(entries).sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0,100);
+  try{localStorage.setItem('tflix_progress_v1',JSON.stringify(Object.fromEntries(recent)));}catch{}
+});
+
+/* ─── END WATCH PROGRESS ─── */
 
 /* Permanent embed refusals are distinct from slow startup. Never lower the
    90-second budget for transient player messages. */
@@ -844,6 +911,7 @@ window.addEventListener('message',event=>{
   const type=event.data?.type;
   if(!['tflix:interaction','tflix:media-playing','tflix:media-paused'].includes(type) || !isCurrentPlayerFrame(event.source)) return;
   if(type !== 'tflix:interaction') watchPlaying=type==='tflix:media-playing';
+
   revealWatchControls();
 });
 

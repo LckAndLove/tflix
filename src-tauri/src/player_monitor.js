@@ -7,8 +7,8 @@
   window.__TFLIX_MEDIA_MONITOR__ = true;
   let failureReported = false;
 
-  function report(type) {
-    try { window.top.postMessage({ type: type }, '*'); } catch (_) {}
+  function report(type, detail = {}) {
+    try { window.top.postMessage({ type: type, ...detail }, '*'); } catch (_) {}
   }
 
   function reportFailure() {
@@ -31,21 +31,34 @@
   function inspect(video) {
     if (video.__tflixObserved) return;
     video.__tflixObserved = true;
-    let hasMedia = false;
+    let hasMedia = false,lastProgress=0,resumeTarget=null;
+    function identity(){if(typeof location==='undefined' || location.hostname!=='cinesrc.st')return {};const match=location.pathname.match(/^\/embed\/(tv|movie)\/(\d+)/);if(!match)return {};const params=new URLSearchParams(location.search);return {mediaType:match[1],mediaId:match[2],season:Number(params.get('s')||1),episode:Number(params.get('e')||1)};}
+    let mediaIdentity=identity();
+    const progress=()=>({...mediaIdentity,currentTime:video.currentTime,duration:video.duration});
+    video.addEventListener('timeupdate',()=>{const now=Date.now();if(hasMedia && now-lastProgress>=5000){lastProgress=now;report('tflix:media-progress',progress());}});
+    video.addEventListener('pause',()=>{if(hasMedia)report('tflix:media-progress',progress());});
+    video.addEventListener('ended',()=>{if(hasMedia)report('tflix:media-progress',{...progress(),ended:true});});
+    video.addEventListener('seeked',()=>{if(resumeTarget!==null && Math.abs(video.currentTime-resumeTarget)<1){resumeTarget=null;report('tflix:media-resumed',progress());}});
+    if(window.addEventListener)window.addEventListener('message',event=>{
+      if(event.source!==window.top || event.data?.type!=='tflix:resume' || video.isConnected===false || video.readyState<2) return;
+      const {time,duration}=event.data;
+      if(!Number.isFinite(time)||!Number.isFinite(duration)||Math.abs(video.duration-duration)>2 || time<5 || time>video.duration-5) return;
+      try{resumeTarget=time;video.currentTime=time;}catch{resumeTarget=null;}
+    });
     function ready() {
       if (Number.isFinite(video.duration) && video.duration > 0 && video.readyState >= 2) {
         failureReported = false;
         hasMedia = true;
-        report('tflix:media-ready');
+        report('tflix:media-ready',progress());
       }
     }
-    video.addEventListener('loadedmetadata', ready, { passive: true });
+    video.addEventListener('loadedmetadata',()=>{mediaIdentity=identity();ready();}, { passive: true });
     video.addEventListener('canplay', ready, { passive: true });
     video.addEventListener('playing', function () {
       if (video.readyState >= 2 && Number.isFinite(video.duration) && video.duration > 0) {
         failureReported = false;
         hasMedia = true;
-        report('tflix:media-playing');
+        report('tflix:media-playing',progress());
       }
     }, { passive: true });
     video.addEventListener('pause', function () { report('tflix:media-paused'); }, { passive: true });

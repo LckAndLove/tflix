@@ -114,7 +114,7 @@
     const style=element('style');
     style.textContent=`
       .tflix-caption {position:absolute;left:5%;right:5%;bottom:var(--tflix-caption-bottom,3.5%);z-index:45;text-align:center;white-space:pre-line;pointer-events:none;color:white;font:600 clamp(16px,2vw,28px)/1.4 Arial,sans-serif;text-shadow:0 2px 3px black,0 0 5px black;}
-      .tflix-subtitle-panel {position:absolute;z-index:100;right:24px;bottom:100px;width:min(440px,calc(100% - 48px));max-height:calc(100% - 130px);overflow:auto;background:#181818;color:#eee;border:1px solid #555;border-radius:5px;padding:20px;font:14px/1.6 Arial,sans-serif;pointer-events:auto;}
+      .tflix-subtitle-panel {position:absolute;z-index:100;right:24px;bottom:100px;width:min(440px,calc(100% - 48px));height:auto!important;max-height:calc(100% - 130px);overflow:auto;background:#181818;color:#eee;border:1px solid #555;border-radius:5px;padding:20px;font:14px/1.6 Arial,sans-serif;pointer-events:auto;}
       .tflix-subtitle-panel[hidden],.tflix-caption[hidden] {display:none!important;}
       .tflix-subtitle-panel h2 {font-size:20px;margin:0 0 12px;}
       .tflix-subtitle-panel button,.tflix-subtitle-panel select {display:block;width:100%;min-height:40px;padding:8px;margin:8px 0;background:#292929;border:1px solid #555;border-radius:3px;color:#eee;white-space:pre-line;text-align:left;font:inherit;cursor:pointer;}
