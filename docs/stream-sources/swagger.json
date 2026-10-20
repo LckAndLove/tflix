@@ -1,0 +1,437 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TFLIX public playback source catalog",
+    "version": "2026-10-20",
+    "description": "A locally captured OpenAPI catalog for the six public embed providers currently configured by TFLIX. These providers expose HTML players and, where documented, JSON catalog or metadata endpoints. The provider prefix in each path is a documentation namespace; use x-upstreamUrl for the actual request URL. Availability and provider behavior can change without notice."
+  },
+  "servers": [
+    {
+      "url": "https://{providerHost}",
+      "description": "The provider host for the selected operation.",
+      "variables": {
+        "providerHost": {
+          "default": "vixsrc.to",
+          "enum": [
+            "vixsrc.to",
+            "moviesapi.to",
+            "vidsrc.sh",
+            "cinesrc.st",
+            "vidfast.vc",
+            "vidlink.pro"
+          ]
+        }
+      }
+    }
+  ],
+  "tags": [
+    { "name": "VixSrc", "description": "TFLIX Rakan source (server 1)." },
+    { "name": "MoviesAPI", "description": "TFLIX Bard source (server 2)." },
+    { "name": "VidSrc", "description": "TFLIX Xayah source (server 3)." },
+    { "name": "CineSrc", "description": "TFLIX Ekko source (server 4)." },
+    { "name": "VidFast", "description": "TFLIX Naafiri source (server 5)." },
+    { "name": "VidLink", "description": "TFLIX Ryze source (server 6)." }
+  ],
+  "paths": {
+    "/vixsrc/movie/{id}": {
+      "get": {
+        "tags": ["VixSrc"],
+        "operationId": "vixsrcEmbedMovie",
+        "summary": "Embed a VixSrc movie",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vixsrc.to/movie/{id}",
+        "x-sourceDocumentation": "https://vixsrc.to/"
+      }
+    },
+    "/vixsrc/tv/{id}/{season}/{episode}": {
+      "get": {
+        "tags": ["VixSrc"],
+        "operationId": "vixsrcEmbedTvEpisode",
+        "summary": "Embed a VixSrc TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/MediaId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vixsrc.to/tv/{id}/{season}/{episode}",
+        "x-sourceDocumentation": "https://vixsrc.to/"
+      }
+    },
+    "/vixsrc/api/list/{type}": {
+      "get": {
+        "tags": ["VixSrc"],
+        "operationId": "vixsrcListCatalog",
+        "summary": "List VixSrc catalog entries",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["movie", "tv", "episode"] }
+          },
+          { "$ref": "#/components/parameters/Language" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/JsonAny" } },
+        "x-upstreamUrl": "https://vixsrc.to/api/list/{type}?lang={lang}",
+        "x-sourceDocumentation": "https://vixsrc.to/"
+      }
+    },
+    "/moviesapi/movie/{id}": {
+      "get": {
+        "tags": ["MoviesAPI"],
+        "operationId": "moviesApiEmbedMovie",
+        "summary": "Embed a MoviesAPI movie",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://moviesapi.to/movie/{id}",
+        "x-sourceDocumentation": "https://moviesapi.to/"
+      }
+    },
+    "/moviesapi/tv/{id}/{season}/{episode}": {
+      "get": {
+        "tags": ["MoviesAPI"],
+        "operationId": "moviesApiEmbedTvEpisode",
+        "summary": "Embed a MoviesAPI TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/MediaId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://moviesapi.to/tv/{id}/{season}/{episode}",
+        "x-alternateUpstreamUrl": "https://moviesapi.to/tv/{id}-{season}-{episode}",
+        "x-sourceDocumentation": "https://moviesapi.to/"
+      }
+    },
+    "/moviesapi/api/discover/movies": {
+      "get": {
+        "tags": ["MoviesAPI"],
+        "operationId": "moviesApiDiscoverMovies",
+        "summary": "Discover MoviesAPI movies",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/ResultsPerPage" },
+          { "$ref": "#/components/parameters/Ordering" },
+          { "$ref": "#/components/parameters/Direction" },
+          { "$ref": "#/components/parameters/SearchQuery" },
+          { "$ref": "#/components/parameters/Year" },
+          { "name": "imdb_id", "in": "query", "schema": { "type": "string" } },
+          { "name": "tmdbid", "in": "query", "schema": { "type": "integer" } },
+          { "$ref": "#/components/parameters/Slider" },
+          { "$ref": "#/components/parameters/Featured" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/JsonAny" } },
+        "x-upstreamUrl": "https://moviesapi.to/api/discover/movies",
+        "x-sourceDocumentation": "https://moviesapi.to/"
+      }
+    },
+    "/moviesapi/api/discover/tv": {
+      "get": {
+        "tags": ["MoviesAPI"],
+        "operationId": "moviesApiDiscoverTv",
+        "summary": "Discover MoviesAPI TV shows",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/ResultsPerPage" },
+          { "$ref": "#/components/parameters/Ordering" },
+          { "$ref": "#/components/parameters/Direction" },
+          { "$ref": "#/components/parameters/SearchQuery" },
+          { "name": "imdbid", "in": "query", "schema": { "type": "string" } },
+          { "name": "tmdbid", "in": "query", "schema": { "type": "integer" } },
+          { "$ref": "#/components/parameters/Slider" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/JsonAny" } },
+        "x-upstreamUrl": "https://moviesapi.to/api/discover/tv",
+        "x-sourceDocumentation": "https://moviesapi.to/"
+      }
+    },
+    "/moviesapi/api/discover/views": {
+      "get": {
+        "tags": ["MoviesAPI"],
+        "operationId": "moviesApiDiscoverViews",
+        "summary": "List MoviesAPI trending content",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["movie", "tv"] } },
+          { "name": "views", "in": "query", "schema": { "type": "string", "enum": ["day", "week", "month", "total"] } },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/Year" },
+          { "$ref": "#/components/parameters/ResultsPerPage" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/JsonAny" } },
+        "x-upstreamUrl": "https://moviesapi.to/api/discover/views",
+        "x-sourceDocumentation": "https://moviesapi.to/"
+      }
+    },
+    "/vidsrc/embed/movie/{id}": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcEmbedMovie",
+        "summary": "Embed a VidSrc movie",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }, { "$ref": "#/components/parameters/VidSrcEmbedOptions" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidsrc.sh/embed/movie/{id}",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/vidsrc/embed/tv/{id}": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcEmbedTv",
+        "summary": "Embed a VidSrc TV show with its episode picker",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }, { "$ref": "#/components/parameters/VidSrcEmbedOptions" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidsrc.sh/embed/tv/{id}",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/vidsrc/embed/tv/{id}/{season}/{episode}": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcEmbedTvEpisode",
+        "summary": "Embed a VidSrc TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/MediaId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" },
+          { "$ref": "#/components/parameters/VidSrcEmbedOptions" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidsrc.sh/embed/tv/{id}/{season}/{episode}",
+        "x-alternateUpstreamUrl": "https://vidsrc.sh/embed/tv/{id}/{season}-{episode}",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/vidsrc/info/movie/{id}.json": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcMovieInfo",
+        "summary": "Get VidSrc movie availability and quality",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }],
+        "responses": { "200": { "$ref": "#/components/responses/VidSrcInfo" }, "404": { "$ref": "#/components/responses/VidSrcNotFound" } },
+        "x-upstreamUrl": "https://vidsrc.sh/info/movie/{id}.json",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/vidsrc/info/tv/{id}.json": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcTvInfo",
+        "summary": "Get VidSrc TV show availability and quality",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }],
+        "responses": { "200": { "$ref": "#/components/responses/VidSrcInfo" }, "404": { "$ref": "#/components/responses/VidSrcNotFound" } },
+        "x-upstreamUrl": "https://vidsrc.sh/info/tv/{id}.json",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/vidsrc/info/tv/{id}/{season}/{episode}.json": {
+      "get": {
+        "tags": ["VidSrc"],
+        "operationId": "vidsrcEpisodeInfo",
+        "summary": "Get VidSrc episode availability and quality",
+        "parameters": [
+          { "$ref": "#/components/parameters/MediaId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/VidSrcInfo" }, "404": { "$ref": "#/components/responses/VidSrcNotFound" } },
+        "x-upstreamUrl": "https://vidsrc.sh/info/tv/{id}/{season}/{episode}.json",
+        "x-sourceDocumentation": "https://vidsrc.sh/vidsrc/docs/"
+      }
+    },
+    "/cinesrc/embed/movie/{tmdb_id}": {
+      "get": {
+        "tags": ["CineSrc"],
+        "operationId": "cinesrcEmbedMovie",
+        "summary": "Embed a CineSrc movie",
+        "parameters": [{ "$ref": "#/components/parameters/TmdbId" }, { "$ref": "#/components/parameters/CineSrcOptions" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://cinesrc.st/embed/movie/{tmdb_id}",
+        "x-sourceDocumentation": "https://cinesrc.st/docs"
+      }
+    },
+    "/cinesrc/embed/tv/{tmdb_id}": {
+      "get": {
+        "tags": ["CineSrc"],
+        "operationId": "cinesrcEmbedTvEpisode",
+        "summary": "Embed a CineSrc TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/TmdbId" },
+          { "$ref": "#/components/parameters/CineSrcSeason" },
+          { "$ref": "#/components/parameters/CineSrcEpisode" },
+          { "$ref": "#/components/parameters/CineSrcOptions" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://cinesrc.st/embed/tv/{tmdb_id}?s={season}&e={episode}",
+        "x-sourceDocumentation": "https://cinesrc.st/docs"
+      }
+    },
+    "/vidfast/movie/{id}": {
+      "get": {
+        "tags": ["VidFast"],
+        "operationId": "vidfastEmbedMovie",
+        "summary": "Embed a VidFast movie",
+        "parameters": [{ "$ref": "#/components/parameters/MediaId" }, { "$ref": "#/components/parameters/VidFastMovieOptions" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidfast.vc/movie/{id}",
+        "x-sourceDocumentation": "https://vidfast.vc/"
+      }
+    },
+    "/vidfast/tv/{id}/{season}/{episode}": {
+      "get": {
+        "tags": ["VidFast"],
+        "operationId": "vidfastEmbedTvEpisode",
+        "summary": "Embed a VidFast TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/MediaId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" },
+          { "$ref": "#/components/parameters/VidFastTvOptions" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidfast.vc/tv/{id}/{season}/{episode}",
+        "x-sourceDocumentation": "https://vidfast.vc/"
+      }
+    },
+    "/vidlink/movie/{tmdb_id}": {
+      "get": {
+        "tags": ["VidLink"],
+        "operationId": "vidlinkEmbedMovie",
+        "summary": "Embed a VidLink movie",
+        "parameters": [{ "$ref": "#/components/parameters/TmdbId" }, { "$ref": "#/components/parameters/VidLinkOptions" }],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidlink.pro/movie/{tmdb_id}",
+        "x-sourceDocumentation": "https://vidlink.pro/"
+      }
+    },
+    "/vidlink/tv/{tmdb_id}/{season}/{episode}": {
+      "get": {
+        "tags": ["VidLink"],
+        "operationId": "vidlinkEmbedTvEpisode",
+        "summary": "Embed a VidLink TV episode",
+        "parameters": [
+          { "$ref": "#/components/parameters/TmdbId" },
+          { "$ref": "#/components/parameters/Season" },
+          { "$ref": "#/components/parameters/Episode" },
+          { "$ref": "#/components/parameters/VidLinkOptions" }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidlink.pro/tv/{tmdb_id}/{season}/{episode}",
+        "x-sourceDocumentation": "https://vidlink.pro/"
+      }
+    },
+    "/vidlink/anime/{malId}/{number}/{subOrDub}": {
+      "get": {
+        "tags": ["VidLink"],
+        "operationId": "vidlinkEmbedAnime",
+        "summary": "Embed a VidLink anime episode",
+        "parameters": [
+          { "name": "malId", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "number", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "subOrDub", "in": "path", "required": true, "schema": { "type": "string", "enum": ["sub", "dub"] } },
+          { "name": "fallback", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/EmbedHtml" } },
+        "x-upstreamUrl": "https://vidlink.pro/anime/{malId}/{number}/{subOrDub}",
+        "x-sourceDocumentation": "https://vidlink.pro/"
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "MediaId": { "name": "id", "in": "path", "required": true, "description": "TMDB numeric ID or, where supported, an IMDb ID beginning with tt.", "schema": { "type": "string", "pattern": "^(tt[0-9]+|[0-9]+)$" } },
+      "TmdbId": { "name": "tmdb_id", "in": "path", "required": true, "description": "TMDB numeric ID.", "schema": { "type": "integer", "minimum": 1 } },
+      "Season": { "name": "season", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+      "Episode": { "name": "episode", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+      "Language": { "name": "lang", "in": "query", "description": "Optional language code.", "schema": { "type": "string", "example": "en" } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "ResultsPerPage": { "name": "resultsPerPage", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+      "Ordering": { "name": "ordering", "in": "query", "schema": { "type": "string", "example": "views" } },
+      "Direction": { "name": "direction", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"] } },
+      "SearchQuery": { "name": "query", "in": "query", "schema": { "type": "string", "minLength": 3 } },
+      "Year": { "name": "year", "in": "query", "schema": { "type": "integer" } },
+      "Slider": { "name": "slider", "in": "query", "schema": { "oneOf": [{ "type": "boolean" }, { "type": "string", "enum": ["0", "1", "true", "yes"] }] } },
+      "Featured": { "name": "featured", "in": "query", "schema": { "oneOf": [{ "type": "boolean" }, { "type": "string", "enum": ["0", "1", "true", "yes"] }] } },
+      "VidSrcEmbedOptions": { "name": "embedOptions", "in": "query", "description": "Documented query options include autoplay, autonext, startAt, ds_lang, sub_url, sub_label and sub_lang. This bundled object is a documentation placeholder; send the individual query parameters to the upstream URL.", "schema": { "type": "object", "additionalProperties": true } },
+      "CineSrcSeason": { "name": "s", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+      "CineSrcEpisode": { "name": "e", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+      "CineSrcOptions": { "name": "playerOptions", "in": "query", "description": "Documented options include seek, autoplay, muted, color, controls, back, autonext, autoskip, prioritize, lastserver, t, continueprompt and quality. Send them individually to the upstream URL.", "schema": { "type": "object", "additionalProperties": true } },
+      "VidFastMovieOptions": { "name": "playerOptions", "in": "query", "description": "Documented options include autoPlay, title, poster, startAt, theme, server, hideServer, fullscreenButton, chromecast and sub.", "schema": { "type": "object", "additionalProperties": true } },
+      "VidFastTvOptions": { "name": "playerOptions", "in": "query", "description": "Documented TV options include autoPlay, title, poster, startAt, theme, nextButton, autoNext, server, hideServer, fullscreenButton, chromecast and sub.", "schema": { "type": "object", "additionalProperties": true } },
+      "VidLinkOptions": { "name": "playerOptions", "in": "query", "description": "Documented options include primaryColor, secondaryColor, iconColor, icons, player, title, poster, autoplay, nextbutton, startAt, sub_file, sub_label and fallback_url. Send them individually to the upstream URL.", "schema": { "type": "object", "additionalProperties": true } }
+    },
+    "responses": {
+      "EmbedHtml": { "description": "HTML player document returned for iframe embedding.", "content": { "text/html": { "schema": { "type": "string" } } } },
+      "JsonAny": { "description": "Provider-defined JSON response.", "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } } },
+      "VidSrcInfo": { "description": "VidSrc availability and quality metadata.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VidSrcInfo" } } } },
+      "VidSrcNotFound": { "description": "Requested title or episode is unavailable.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VidSrcNotFound" } } } }
+    },
+    "schemas": {
+      "VidSrcInfo": { "type": "object", "properties": { "status_code": { "type": "integer" }, "type": { "type": "string", "enum": ["movie", "tv", "episode"] }, "imdb_id": { "type": ["string", "null"] }, "tmdb_id": { "type": ["string", "null"] }, "title": { "type": "string" }, "quality": { "type": "string" }, "embed_url": { "type": "string", "format": "uri" }, "embed_url_tmdb": { "type": ["string", "null"], "format": "uri" } }, "additionalProperties": true },
+      "VidSrcNotFound": { "type": "object", "required": ["status_code", "error", "message"], "properties": { "status_code": { "type": "integer", "example": 404 }, "error": { "type": "string", "example": "not found" }, "message": { "type": "string" } } }
+    }
+  },
+  "x-capture": {
+    "capturedAt": "2026-10-20",
+    "method": "Public provider documentation pages and the TFLIX resolver configuration were compared. No credentials or private endpoints were collected.",
+    "tflixResolver": "stream/index.html",
+    "providerCount": 6
+  },
+  "x-providers": [
+    {
+      "id": "vixsrc",
+      "tflixServer": 1,
+      "name": "Rakan",
+      "baseUrl": "https://vixsrc.to",
+      "documentation": "https://vixsrc.to/",
+      "integration": "https://vixsrc.to/movie/{id}?autoPlay=true&lang=en or https://vixsrc.to/tv/{id}/{season}/{episode}?autoPlay=true&lang=en",
+      "documentedFeatures": ["movie embed", "TV episode embed", "catalog list", "autoplay", "startAt", "audio language", "postMessage player events"]
+    },
+    {
+      "id": "moviesapi",
+      "tflixServer": 2,
+      "name": "Bard",
+      "baseUrl": "https://moviesapi.to",
+      "documentation": "https://moviesapi.to/",
+      "integration": "https://moviesapi.to/movie/{id} or https://moviesapi.to/tv/{id}-{season}-{episode}",
+      "documentedFeatures": ["movie embed", "TV episode embed", "discover movies", "discover TV", "trending views", "resume", "subtitles", "postMessage player API"]
+    },
+    {
+      "id": "vidsrc",
+      "tflixServer": 3,
+      "name": "Xayah",
+      "baseUrl": "https://vidsrc.sh",
+      "documentation": "https://vidsrc.sh/vidsrc/docs/",
+      "integration": "https://vidsrc.sh/embed/movie?tmdb={id}&autoplay=1 or https://vidsrc.sh/embed/tv?tmdb={id}&season={season}&episode={episode}&autoplay=1&autonext=1",
+      "documentedFeatures": ["movie and TV embeds", "content info JSON", "latest content feeds", "ID lists", "subtitle options", "resume", "postMessage player events"]
+    },
+    {
+      "id": "cinesrc",
+      "tflixServer": 4,
+      "name": "Ekko",
+      "baseUrl": "https://cinesrc.st",
+      "documentation": "https://cinesrc.st/docs",
+      "integration": "https://cinesrc.st/embed/movie/{id}?autoplay=true&prioritize=true&lastserver=wave or https://cinesrc.st/embed/tv/{id}?s={season}&e={episode}&autoplay=true&autonext=false&prioritize=true&lastserver=wave",
+      "documentedFeatures": ["movie and TV embeds", "player options", "subtitle upload", "postMessage events and commands", "source selection"]
+    },
+    {
+      "id": "vidfast",
+      "tflixServer": 5,
+      "name": "Naafiri",
+      "baseUrl": "https://vidfast.vc",
+      "documentation": "https://vidfast.vc/",
+      "integration": "https://vidfast.vc/movie/{id}?autoPlay=true or https://vidfast.vc/tv/{id}/{season}/{episode}?autoPlay=true",
+      "documentedFeatures": ["movie and TV embeds", "server selector", "adaptive streaming", "startAt", "subtitle language", "next episode"]
+    },
+    {
+      "id": "vidlink",
+      "tflixServer": 6,
+      "name": "Ryze",
+      "baseUrl": "https://vidlink.pro",
+      "documentation": "https://vidlink.pro/",
+      "integration": "https://vidlink.pro/movie/{tmdbId}?title=true&poster=true&autoplay=true or https://vidlink.pro/tv/{tmdbId}/{season}/{episode}?title=true&poster=true&autoplay=true&nextbutton=true",
+      "documentedFeatures": ["movie and TV embeds", "anime embeds", "player customization", "external VTT subtitles", "resume data", "postMessage player events"]
+    }
+  ]
+}
