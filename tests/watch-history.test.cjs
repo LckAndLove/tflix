@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function setup(values={}){
  const elements={'season-select':{value:'1',options:[{value:'1'},{value:'2'}]},'episode-select':{value:'1',options:[{value:'1'},{value:'2'},{value:'3'}]}};
- const context={localStorage:{getItem:k=>values[k]},window:{addEventListener(){}},mediaOf:x=>x.media_type,currentLang:'zh',modalRequest:1,currentModalItem:{id:12,media_type:'tv'},seasonCache:{'zh-12-1':{episodes:[{episode_number:1},{episode_number:2},{episode_number:3}]}},tvDetails:{'zh-12':{seasons:[{season_number:1},{season_number:2,episode_count:3,air_date:'2020-01-01'}]}},$:id=>elements[id],updateEpisodes:async()=>{elements['episode-select'].value='1';}};
+ const context={localStorage:{getItem:k=>values[k]},window:{addEventListener(){}},mediaOf:x=>x.media_type,currentLang:'zh',modalRequest:1,currentModalItem:{id:12,media_type:'tv'},seasonCache:{'zh-12-1':{episodes:[{episode_number:1,air_date:'2020-01-01'},{episode_number:2,air_date:'2020-01-08'},{episode_number:3,air_date:'2020-01-15'}]}},tvDetails:{'zh-12':{seasons:[{season_number:1},{season_number:2,episode_count:3,air_date:'2020-01-01'}]}},$:id=>elements[id],updateEpisodes:async()=>{elements['episode-select'].value='1';}};
  vm.createContext(context);const html=fs.readFileSync('index.html','utf8'),start=html.indexOf('/* ─── WATCH HISTORY');vm.runInContext(html.slice(start,html.indexOf('/* ─── END WATCH HISTORY',start)),context);return{context,elements};
 }
 const record={id:'12',type:'tv',season:1,episode:2,server:4,time:45,duration:120,updatedAt:Date.now()};
@@ -14,6 +14,10 @@ test('completed episodes advance to a real aired next episode and then next seas
 });
 test('future episodes are not suggested as an available next episode',async()=>{
  const {context,elements}=setup();context.seasonCache['zh-12-1'].episodes[2].air_date='2999-01-01';context.tvDetails['zh-12'].seasons=[];
+ await context.applyWatchedEpisode({...record,completed:true});assert.equal(elements['episode-select'].value,'2');
+});
+test('episodes without an air date are not suggested as available',async()=>{
+ const {context,elements}=setup();delete context.seasonCache['zh-12-1'].episodes[2].air_date;context.tvDetails['zh-12'].seasons=[];
  await context.applyWatchedEpisode({...record,completed:true});assert.equal(elements['episode-select'].value,'2');
 });
 test('existing source positions migrate and stale or malformed history is ignored',()=>{

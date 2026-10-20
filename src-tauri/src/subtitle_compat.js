@@ -111,8 +111,15 @@
     // player from restoring files or applying its own saved timing offset. Source
     // bundled tracks are offered by the same local controller instead.
     if(url.origin===location.origin && url.pathname==='/api/subtitles/search' && response.ok) {
-      const data=await response.clone().json();
-      if(Array.isArray(data.subtitles)) return new Response(JSON.stringify({...data,subtitles:[]}),{status:200,headers:{'Content-Type':'application/json'}});
+      try {
+        const data=await response.clone().json();
+        if(Array.isArray(data.subtitles)) return new Response(JSON.stringify({...data,subtitles:[]}),{status:200,headers:{'Content-Type':'application/json'}});
+      } catch {
+        // Some providers return an HTML/empty 200 response when their subtitle
+        // service is unavailable. Keep the remote player alive with a valid
+        // empty catalog instead of surfacing a JSON parse rejection.
+        return new Response(JSON.stringify({subtitles:[],upstreamStatus:'invalid'}),{status:200,headers:{'Content-Type':'application/json'}});
+      }
     }
     if(hosts.has(url.hostname) && url.pathname==='/search' && response.ok) return new Response('[]',{status:200,headers:{'Content-Type':'application/json'}});
     return response;

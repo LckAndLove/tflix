@@ -43,6 +43,10 @@ test('remote subtitle renderer cannot restore a saved offset for locally owned f
  const {window}=install(async()=>Response.json({subtitles:[{id:'source',source:'builtin'},{id:'unknown',source:'external'}],upstreamStatus:'ok'}));
  const data=await(await window.fetch('/api/subtitles/search')).json();assert.equal(data.subtitles.length,0);
 });
+test('malformed successful subtitle responses degrade to an empty catalog',async()=>{
+ const {window}=install(async()=>new Response('<html>temporarily unavailable</html>',{status:200,headers:{'Content-Type':'text/html'}}));
+ const data=await(await window.fetch('/api/subtitles/search')).json();assert.deepEqual(data,{subtitles:[],upstreamStatus:'invalid'});
+});
 test('unrelated video requests are left unchanged',async()=>{
  const response=new Response('playlist');const {window}=install(async()=>response);
  assert.equal(await window.fetch('https://cinesrc.st/api/playlist/test'),response);
