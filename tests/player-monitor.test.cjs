@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function monitor(duration = 120, readyState = 2) {
+function monitor(duration = 120, readyState = 2, text = '') {
   const signals = [], listeners = {};
   const video = { duration, readyState, addEventListener(type, fn) { listeners[type] = fn; } };
-  const document = { body: { innerText: '' }, querySelectorAll() { return [video]; } };
+  const document = { body: { innerText: text }, querySelectorAll() { return [video]; } };
   const window = { top: { postMessage(data) { signals.push(data.type); } }, self: {} };
   vm.runInNewContext(fs.readFileSync('src-tauri/src/player_monitor.js', 'utf8'), {
     window, document, MutationObserver: class { observe() {} }
@@ -36,7 +36,7 @@ function playerState() {
     autoTryEnabled: true, sourceRecoveryTimer: null, SOURCE_RECOVERY_TIMEOUT_MS: 12000,
     setTimeout(fn, delay) { context.recovery = fn; context.delay = delay; return 99; },
     clearTimeout(id) { cleared.push(id); }, isCurrentPlayerFrame() { return true; },
-    updateServerCards() {}, updateSourceStatus() {}, t() { return '%s'; }, serverName() { return 'Ekko'; },
+    hidePlaybackFailure() {}, updateServerCards() {}, updateSourceStatus() {}, t() { return '%s'; }, serverName() { return 'Ekko'; },
     tryNextSource() { context.nextCalls++; }, nextCalls: 0
   };
   vm.createContext(context);
@@ -99,4 +99,20 @@ test('recovered media cancels the error recovery timer', () => {
   assert.ok(cleared.includes(99));
   assert.equal(context.sourceRecoveryTimer,null);
   assert.equal(context.nextCalls,0);
+});
+
+test('reports explicit sandbox refusal as permanent instead of a transient error',()=>{
+ const {signals}=monitor(0,0,"This content can’t be embedded in a sandboxed frame. The player was loaded inside an <iframe sandbox>, which isn’t permitted.");
+ assert.deepEqual(signals,['tflix:embed-blocked']);
+});
+test('does not mistake ordinary sandbox text for a refusal',()=>{
+ assert.deepEqual(monitor(0,0,'A sandbox adventure').signals,[]);
+});
+
+test('manual playback errors show recovery without changing the chosen source',()=>{
+ const {context,send}=playerState();context.autoTryEnabled=false;
+ context.showPlaybackFailure=()=>context.failureShown=true;
+ send('tflix:media-ready');send('tflix:media-error');
+ assert.equal(context.failureShown,true);assert.equal(context.nextCalls,0);
+ assert.equal(context.sourceStatuses[4],'failed');
 });

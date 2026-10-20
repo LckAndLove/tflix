@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TFLIX — Watch</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" href="../assets/icons/icon_16.png" sizes="16x16">
   <link rel="icon" href="../assets/icons/icon_32.png" sizes="32x32">
   <link rel="icon" href="../assets/icons/icon_48.png" sizes="48x48">
@@ -24,7 +21,14 @@
     a { text-decoration:none; }
     [hidden] { display:none !important; }
     :focus-visible { outline:2px solid #fff; outline-offset:4px; }
-    header { height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; background:#101010; position:relative; z-index:50; }
+    header { height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; background:linear-gradient(#000b,transparent); position:absolute; inset:0 0 auto; z-index:50; transition:opacity .25s; }
+    body.controls-idle header { opacity:0; pointer-events:none; }
+    html.keynav body.controls-idle header:focus-within { opacity:1; pointer-events:auto; }
+    .playback-failure { position:absolute; inset:0; z-index:3; display:grid; place-content:center; text-align:center; gap:16px; padding:80px 24px; background:#101010; }
+    .playback-failure h2 { font-size:24px; font-weight:500; }
+    .playback-failure p { max-width:500px; color:#aaa; font-size:14px; line-height:1.7; }
+    .failure-action { justify-self:center; background:#fff; color:#111; border:0; border-radius:3px; padding:12px 22px; font-weight:600; }
+    .server-card:disabled { opacity:.45; cursor:not-allowed; }
     .back-btn { width:32px; height:36px; display:grid; place-items:center; flex-shrink:0; color:#fff; background:none; border:0; }
     .back-btn:hover { opacity:.7; }
     .logo { color:var(--accent); font-size:17px; font-weight:800; letter-spacing:-.06em; cursor:pointer; flex-shrink:0; }
@@ -39,7 +43,7 @@
     #sources-btn[data-state="failed"] .source-indicator { background:#ff7070; }
     .current-source { color:#999; font-size:12px; }
     #support-btn { display:none; }
-    main { height:calc(100vh - 60px); height:calc(100dvh - 60px); position:relative; }
+    main { height:100vh; height:100dvh; position:relative; }
     .player-col,.player-wrap { width:100%; height:100%; }
     .player-wrap { position:relative; background:#000; }
     #player { position:absolute; inset:0; width:100%; height:100%; border:0; }
@@ -49,7 +53,7 @@
     .spinner { width:38px; height:38px; border:3px solid #333; border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .drawer-scrim { position:fixed; inset:60px 0 0; z-index:55; background:#0003; border:0; cursor:default; }
-    .controls-col { position:absolute; top:12px; right:20px; width:min(400px,calc(100% - 40px)); max-height:calc(100% - 32px); overflow:auto; z-index:60; background:#181818; border:1px solid #353535; border-radius:6px; box-shadow:var(--shadow); }
+    .controls-col { position:absolute; top:72px; right:20px; width:min(400px,calc(100% - 40px)); max-height:calc(100% - 92px); overflow:auto; z-index:60; background:#181818; border:1px solid #353535; border-radius:6px; box-shadow:var(--shadow); }
     .drawer-header { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 0; gap:16px; }
     .drawer-header h2 { font-size:20px; font-weight:600; }
     .drawer-close { padding:6px 0 6px 12px; background:none; border:0; color:#bbb; font-size:12px; }
@@ -92,7 +96,7 @@
     .fatal h2 { color:#fff; font-size:24px; }
     .fatal a { color:#fff; text-decoration:underline; }
     html.keynav .kf { outline:2px solid #fff; outline-offset:2px; }
-    @media (max-width:700px) { header { padding:0 12px; gap:8px; height:56px; } main { height:calc(100vh - 56px); height:calc(100dvh - 56px); } .logo { display:none; } .now-title { font-size:13px; } .ep-tag { display:none; } .watch-action { padding:6px 8px; font-size:12px; } .current-source { display:none; } .support-btn { padding:6px; } .drawer-scrim { top:56px; } .controls-col { right:12px; width:min(380px,calc(100% - 24px)); } }
+    @media (max-width:700px) { header { padding:0 12px; gap:8px; height:56px; } main { height:100vh; height:100dvh; } .logo { display:none; } .now-title { font-size:13px; } .ep-tag { display:none; } .watch-action { padding:6px 8px; font-size:12px; } .current-source { display:none; } .support-btn { padding:6px; } .drawer-scrim { top:56px; } .controls-col { right:12px; width:min(380px,calc(100% - 24px)); } }
     @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
   </style>
 </head>
@@ -123,6 +127,7 @@
     <div class="player-col">
       <div class="player-wrap" id="player-wrap">
         <div class="player-loading" id="player-loading"><div class="spinner"></div></div>
+        <div class="playback-failure" id="playback-failure" role="status" hidden><h2 id="failure-title"></h2><p id="failure-copy"></p><button class="failure-action" id="failure-action" type="button"></button></div>
         <iframe id="player" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
       </div>
     </div>
@@ -176,12 +181,13 @@ const LANG_STORAGE_KEY = 'tflix_lang';
 
 const I18N = {
   en: {
+    sourceBlocked:'Unavailable in this player', failureTitle:'This source cannot play', failureCopy:'This source is unavailable or does not support embedding. Try another source; your episode selection is preserved.', failureAction:'Choose another source', exhaustedTitle:'No playable source found', exhaustedCopy:'All available sources were tried. This title may not be available yet. You can retry or choose a source.',
     episodes: 'Episodes', sources: 'Sources', close: 'Close',
     langShort: 'EN',
     back: 'Back',
     support: 'Support',
     serversHeader: 'Streaming Servers',
-    nowStreaming: 'Now streaming from %s',
+    nowStreaming: 'Loading %s',
     season: 'Season',
     episode: 'Episode',
     nextEp: 'Next Episode',
@@ -215,12 +221,13 @@ const I18N = {
     switchedToast: 'Switched to English'
   },
   zh: {
+    sourceBlocked:'当前播放器不支持', failureTitle:'这个播放源暂时无法播放', failureCopy:'当前来源不可用或不支持嵌入。请尝试其他播放源，已保留当前选集。', failureAction:'选择其他播放源', exhaustedTitle:'暂未找到可播放的片源', exhaustedCopy:'已尝试可用播放源，该影片可能尚未上线。可以重新试源或手动选择其他来源。',
     episodes: '选集', sources: '播放源', close: '关闭',
     langShort: '中',
     back: '返回',
     support: '技术支持',
     serversHeader: '播放源服务器',
-    nowStreaming: '正在从 %s 播放',
+    nowStreaming: '正在加载 %s',
     season: '季',
     episode: '集',
     nextEp: '下一集',
@@ -283,7 +290,10 @@ const serverUrlResolvers = {
   6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
 };
 
-const AUTO_SOURCE_ORDER = [4, 5, 6, 1, 2, 3];
+// Xayah explicitly refuses sandboxed embedding. Keep isolation, and exclude
+// this confirmed incompatible provider rather than serving its error page.
+const UNSUPPORTED_SOURCES = new Set([3]);
+const AUTO_SOURCE_ORDER = [4, 5, 6, 1, 2];
 const SOURCE_CHECK_TIMEOUT_MS = 90000;
 const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
 
@@ -342,6 +352,11 @@ function syncUrl() {
 function loadPlayer(continueAutoTry = false) {
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
+  $('playback-failure').hidden = true;
+  if (UNSUPPORTED_SOURCES.has(state.server)) {
+    state.server = 4;
+    document.querySelectorAll('.server-card').forEach(card=>card.classList.toggle('selected',Number(card.dataset.id)===4));
+  }
   const src = serverUrlResolvers[state.server](state);
   const loader = $('player-loading');
   loader.classList.remove('hide');
@@ -358,7 +373,7 @@ function loadPlayer(continueAutoTry = false) {
   $('retry-source-btn').hidden = !canDetect;
   sourceStatuses[state.server] = canDetect ? 'checking' : 'selected';
   updateSourceStatus(canDetect ? 'checking' : 'manual', canDetect
-    ? t(autoTryEnabled ? 'sourceChecking' : 'sourceStopped').replace('%s', serverName(state.server)) : t('sourceManual'));
+    ? t('sourceChecking').replace('%s', serverName(state.server)) : t('sourceManual'));
   updateServerCards();
 
   // Recreate the iframe on every load so the Permissions Policy
@@ -386,9 +401,11 @@ function loadPlayer(continueAutoTry = false) {
   old.replaceWith(frame);
 
   clearTimeout(sourceCheckTimer);
-  if (window.__TFLIX_PLAYER_ORIGIN__ && autoTryEnabled) {
+  if (window.__TFLIX_PLAYER_ORIGIN__) {
     sourceCheckTimer = setTimeout(() => {
-      if (!playerMediaDetected) tryNextSource();
+      if (playerMediaDetected) return;
+      if (autoTryEnabled) tryNextSource();
+      else { sourceStatuses[state.server]='failed'; updateServerCards(); updateSourceStatus('failed', t('failureTitle')); showPlaybackFailure(false); }
     }, SOURCE_CHECK_TIMEOUT_MS);
   }
 
@@ -414,7 +431,7 @@ function updateSourceStatus(status, message) {
 function updateServerCards() {
   document.querySelectorAll('.server-card').forEach(card => {
     const id = Number(card.dataset.id);
-    const status = sourceStatuses[id] || 'unknown';
+    const status = UNSUPPORTED_SOURCES.has(id) ? 'blocked' : sourceStatuses[id] || 'unknown';
     card.dataset.status = status;
     const label = card.querySelector('.s-state');
     if (!label) return;
@@ -424,7 +441,7 @@ function updateServerCards() {
       checking: t('sourceCheckingLabel'),
       available: t('sourceReadyLabel'),
       playing: t('sourcePlayingLabel'),
-      failed: t('sourceFailedLabel')
+      failed: t('sourceFailedLabel'), blocked: t('sourceBlocked')
     };
     label.textContent = labels[status];
   });
@@ -439,6 +456,7 @@ function tryNextSource() {
   if (!next) {
     updateServerCards();
     updateSourceStatus('failed', t('sourceNotFound'));
+    showPlaybackFailure(true);
     return;
   }
   const previous = serverName(state.server);
@@ -454,10 +472,18 @@ function onPlayerMediaEvent(event) {
   if (!event.data || !['tflix:media-ready', 'tflix:media-playing', 'tflix:media-error'].includes(event.data.type)) return;
   if (!isCurrentPlayerFrame(event.source)) return;
   if (event.data.type === 'tflix:media-error') {
-    if (!autoTryEnabled || sourceRecoveryTimer) return;
     const failedServer = state.server;
     // Early error placeholders must not shorten the initial loading window.
     if (!playerMediaDetected) return;
+    if (!autoTryEnabled) {
+      playerMediaDetected=false;
+      sourceStatuses[state.server]='failed';
+      updateServerCards();
+      updateSourceStatus('failed', t('failureTitle'));
+      showPlaybackFailure(false);
+      return;
+    }
+    if (sourceRecoveryTimer) return;
     clearTimeout(sourceCheckTimer);
     updateSourceStatus('switching', t('sourceRecovering').replace('%s', serverName(failedServer)));
     sourceRecoveryTimer = setTimeout(() => {
@@ -470,6 +496,7 @@ function onPlayerMediaEvent(event) {
   }
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
+  hidePlaybackFailure();
   const playing = event.data.type === 'tflix:media-playing';
   // A playable video may require a user gesture. Do not switch it away.
   clearTimeout(sourceCheckTimer);
@@ -500,7 +527,6 @@ function isCurrentPlayerFrame(source) {
 window.addEventListener('message', onPlayerMediaEvent);
 $('retry-source-btn').addEventListener('click', () => {
   autoTryEnabled = !autoTryEnabled;
-  clearTimeout(sourceCheckTimer);
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
   if (autoTryEnabled) loadPlayer();
@@ -526,6 +552,7 @@ function buildServers() {
     const el = document.createElement('button');
     el.className = 'server-card' + (s.id === state.server ? ' selected' : '');
     el.dataset.id = s.id;
+    el.disabled = UNSUPPORTED_SOURCES.has(s.id);
     const note = currentLang === 'zh' ? s.noteZh : s.noteEn;
     el.innerHTML = `
       <span class="s-dot"></span>
@@ -550,6 +577,7 @@ function buildServers() {
 function applyTranslations() {
   document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
   $('lang-label').textContent = t('langShort');
+  $('failure-action').textContent = t('failureAction');
   $('episodes-label').textContent = t('episodes');
   $('sources-label').textContent = t('sources');
   $('drawer-close').textContent = t('close');
@@ -771,15 +799,58 @@ function toast(msg){
   t._tm = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+/* Permanent embed refusals are distinct from slow startup. Never lower the
+   90-second budget for transient player messages. */
+function hidePlaybackFailure() {
+  const panel=$('playback-failure');
+  if(panel) panel.hidden=true;
+}
+function showPlaybackFailure(exhausted) {
+  $('failure-title').textContent=t(exhausted?'exhaustedTitle':'failureTitle');
+  $('failure-copy').textContent=t(exhausted?'exhaustedCopy':'failureCopy');
+  $('playback-failure').hidden=false;
+  revealWatchControls();
+}
+$('failure-action').addEventListener('click',()=>openWatchDrawer('sources'));
+window.addEventListener('message',event=>{
+  if(event.data?.type !== 'tflix:embed-blocked' || !isCurrentPlayerFrame(event.source)) return;
+  clearTimeout(sourceCheckTimer);
+  clearTimeout(sourceRecoveryTimer);
+  sourceRecoveryTimer=null;
+  sourceStatuses[state.server]='failed';
+  playerMediaDetected=false;
+  updateServerCards();
+  if(autoTryEnabled) tryNextSource();
+  else { updateSourceStatus('failed',t('failureTitle')); showPlaybackFailure(false); }
+});
+
+let chromeTimer=null, watchPlaying=false;
+function revealWatchControls() {
+  document.body.classList.remove('controls-idle');
+  clearTimeout(chromeTimer);
+  chromeTimer=setTimeout(()=>{
+    if(watchPlaying && $('watch-drawer')?.hidden && $('playback-failure')?.hidden && !(document.documentElement.classList.contains('keynav') && document.querySelector('header:focus-within'))) document.body.classList.add('controls-idle');
+  },3500);
+}
+for(const name of ['pointermove','pointerdown','keydown']) document.addEventListener(name,revealWatchControls,{passive:true});
+window.addEventListener('message',event=>{
+  const type=event.data?.type;
+  if(!['tflix:interaction','tflix:media-playing','tflix:media-paused'].includes(type) || !isCurrentPlayerFrame(event.source)) return;
+  if(type !== 'tflix:interaction') watchPlaying=type==='tflix:media-playing';
+  revealWatchControls();
+});
+
 /* Watch settings float above the video; opening them never reloads it. */
 let drawerTrigger = null;
 function closeWatchDrawer() {
   $('watch-drawer').hidden = true;
+  revealWatchControls();
   $('drawer-scrim').hidden = true;
   for (const id of ['episodes-btn','sources-btn']) $(id).setAttribute('aria-expanded','false');
   drawerTrigger?.focus({preventScroll:true});
 }
 function openWatchDrawer(panel) {
+  revealWatchControls();
   const drawer = $('watch-drawer');
   const trigger = $(panel === 'episodes' ? 'episodes-btn' : 'sources-btn');
   if (!drawer.hidden && drawer.dataset.panel === panel) { closeWatchDrawer(); return; }
@@ -862,6 +933,8 @@ $('back-btn').addEventListener('click', () => {
       const items=Array.from(drawer.querySelectorAll('button,select')).filter(el=>vis(el) && !el.disabled);
       return items.map(el=>({items:[el]}));
     }
+    const failure=$('playback-failure');
+    if(failure && !failure.hidden) secs.push({items:[$('failure-action')]});
     const header = [$('back-btn'), $('episodes-btn'), $('sources-btn'), $('lang-btn'), $('support-btn')].filter(vis);
     if (header.length) secs.push({ items: header });
     const tv = $('tv-panel');

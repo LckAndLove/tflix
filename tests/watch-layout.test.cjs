@@ -8,7 +8,7 @@ function watch(){
   for(const id of ['watch-drawer','drawer-scrim','episodes-btn','sources-btn','drawer-close','drawer-title']) elements[id]={id,hidden:true,dataset:{},attrs:{},setAttribute(k,v){this.attrs[k]=v;},focus(){focused=this;},addEventListener(k,v){handlers[id+':'+k]=v;}};
   elements['watch-drawer'].querySelectorAll=()=>[elements['drawer-close'],elements['sources-btn']];
   for(const el of Object.values(elements)) el.getClientRects=()=>[{}];
-  const context={$:id=>elements[id],t:k=>k,document:{addEventListener:(k,v)=>handlers[k]=v,activeElement:null},loadPlayer(){throw Error('Settings must not reload playback');}};
+  const context={revealWatchControls(){},$:id=>elements[id],t:k=>k,document:{addEventListener:(k,v)=>handlers[k]=v,activeElement:null},loadPlayer(){throw Error('Settings must not reload playback');}};
   vm.createContext(context);
   const start=html.indexOf('/* Watch settings float');
   vm.runInContext(html.slice(start,html.indexOf('/* ─── NAV ─── */',start)),context);

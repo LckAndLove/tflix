@@ -19,7 +19,11 @@
 
   function inspectErrorPage() {
     const text = (document.body && document.body.innerText || '').slice(0, 3000);
-    if (/please disable sandbox/i.test(text) || /status code\s*404/i.test(text) || /404[\s\S]{0,100}something went wrong/i.test(text) || /this video(?: file)? (?:is )?unavailable/i.test(text)) {
+    if (/please disable sandbox|can[’']t be embedded in a sandboxed frame|iframe sandbox[^\n]{0,100}(?:isn[’']t|not) permitted/i.test(text)) {
+      if (!failureReported) { failureReported = true; report('tflix:embed-blocked'); }
+      return;
+    }
+    if (/status code\s*404/i.test(text) || /404[\s\S]{0,100}something went wrong/i.test(text) || /this video(?: file)? (?:is )?unavailable/i.test(text)) {
       reportFailure();
     }
   }
@@ -44,6 +48,7 @@
         report('tflix:media-playing');
       }
     }, { passive: true });
+    video.addEventListener('pause', function () { report('tflix:media-paused'); }, { passive: true });
     video.addEventListener('error', function () {
       // Include failures after canplay but before the first playing event.
       if (hasMedia) reportFailure();
@@ -62,6 +67,13 @@
     });
     inspectErrorPage();
   }).observe(document, { childList: true, characterData: true, subtree: true });
+  let lastInteraction = 0;
+  if (document.addEventListener) for (const name of ['pointermove','pointerdown','keydown']) document.addEventListener(name, function () {
+    const now = Date.now();
+    if (now - lastInteraction < 800) return;
+    lastInteraction = now;
+    report('tflix:interaction');
+  }, { passive:true });
   scan(document);
   inspectErrorPage();
 })();
