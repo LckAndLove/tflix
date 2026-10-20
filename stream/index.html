@@ -79,6 +79,9 @@
     .retry-source-btn { flex-shrink:0; padding:5px 8px; background:none; border:1px solid #666; border-radius:3px; color:#ddd; font-size:11px; }
     .retry-source-btn:hover { border-color:#fff; }
     .server-grid { display:grid; grid-template-columns:1fr; gap:0; }
+    .backup-sources > summary { cursor:pointer; color:#ddd; font-size:13px; list-style:none; }
+    .backup-sources > summary::-webkit-details-marker { display:none; }
+    .backup-sources[open] > summary { margin-bottom:18px; }
     .server-card { display:grid; grid-template-columns:6px minmax(0,1fr); gap:12px; align-items:center; min-height:66px; width:100%; padding:14px 10px; background:none; border:0; border-bottom:1px solid #ffffff12; text-align:left; color:#ddd; }
     .server-card:last-child { border-bottom:0; }
     .server-card:hover { background:#ffffff09; }
@@ -111,7 +114,7 @@
     <div class="logo" id="logo">TFLIX</div>
     <div class="now-title" id="now-title">Loading…</div>
     <button class="watch-action" id="episodes-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span id="episodes-label">Episodes</span></button>
-    <button class="watch-action" id="sources-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span class="source-indicator" aria-hidden="true"></span><span id="sources-label">Sources</span><span class="current-source" id="current-source"></span></button>
+    <button class="watch-action" id="sources-btn" type="button" aria-controls="watch-drawer" aria-expanded="false" aria-haspopup="dialog"><span id="sources-label">Settings</span></button>
     <button class="support-btn" id="lang-btn" title="Language / 语言" aria-label="Language / 语言" style="cursor:pointer;">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
@@ -128,7 +131,7 @@
   <main id="main">
     <div class="player-col">
       <div class="player-wrap" id="player-wrap">
-        <div class="player-loading" id="player-loading"><div class="spinner"></div></div>
+        <div class="player-loading" id="player-loading"><div><div class="spinner"></div><p id="player-loading-label">正在寻找最佳线路…</p></div></div>
         <div class="playback-failure" id="playback-failure" role="status" hidden><h2 id="failure-title"></h2><p id="failure-copy"></p><button class="failure-action" id="failure-action" type="button"></button></div>
         <iframe id="player" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
         <div id="source-probes" aria-hidden="true"></div>
@@ -137,7 +140,7 @@
 
     <button class="drawer-scrim" id="drawer-scrim" type="button" tabindex="-1" aria-label="Close" hidden></button>
     <aside class="controls-col" id="watch-drawer" data-panel="sources" role="dialog" aria-labelledby="drawer-title" hidden>
-      <div class="drawer-header"><h2 id="drawer-title">Sources</h2><button class="drawer-close" id="drawer-close" type="button">Close</button></div>
+      <div class="drawer-header"><h2 id="drawer-title">Settings</h2><button class="drawer-close" id="drawer-close" type="button">Close</button></div>
       <div class="panel" id="tv-panel" hidden>
         <div class="selectors">
           <div>
@@ -157,18 +160,21 @@
       </div>
 
       <div class="panel" id="servers-panel">
-        <div class="panel-title">Streaming Servers</div>
+        <details class="backup-sources">
+        <summary>备用线路</summary>
         <div class="source-health" id="source-health" data-state="checking" role="status" aria-live="polite">
           <div class="source-health-copy"><span class="source-health-dot"></span><span id="source-health-text">Checking source…</span></div>
           <button class="retry-source-btn" id="retry-source-btn" type="button">Auto try</button>
         </div>
         <div class="server-grid" id="server-grid"></div>
+        </details>
       </div>
     </aside>
   </main>
 
   <div id="toast"></div>
 
+<script src="source-config.js"></script>
 <script>
 /* ─── CONFIG ─── */
 const API_BASE = "https://api.themoviedb.org/3";
@@ -182,12 +188,13 @@ const HEADERS = {
 
 const STORAGE_KEY = 'tflix_server';
 const EPISODE_SERVER_STORAGE_KEY = 'tflix_episode_servers_v1';
+const MANUAL_SOURCE_KEY = 'tflix_manual_source_v1';
 const LANG_STORAGE_KEY = 'tflix_lang';
 
 const I18N = {
   en: {
     sourceBlocked:'Unavailable in this player', failureTitle:'This source cannot play', failureCopy:'This source is unavailable or does not support embedding. Try another source; your episode selection is preserved.', failureAction:'Choose another source', exhaustedTitle:'No playable source found', exhaustedCopy:'All available sources were tried. This title may not be available yet. You can retry or choose a source.',
-    episodes: 'Episodes', sources: 'Sources', close: 'Close',
+    episodes: 'Episodes', sources: 'Settings', settings:'Settings', backupSources:'Backup sources', close: 'Close',
     langShort: 'EN',
     back: 'Back',
     support: 'Support',
@@ -198,9 +205,9 @@ const I18N = {
     nextEp: 'Next Episode',
     nextEpTitle: 'Next: S%s E%s',
     noNextEp: 'No next episode',
-    sourceManual: 'Automatic detection is unavailable here · select a source manually',
+    sourceManual: 'Automatic source switching is unavailable here',
     sourceSelectedLabel: 'Selected',
-    sourceChecking: 'Loading %s · waiting up to 90 seconds…',
+    sourceChecking: 'Searching for the best stream…',
     sourceReady: 'Video found on %s · waiting to play',
     sourcePaused:'Paused · %s', sourceAutoOff:'Disable automatic recovery', sourcePlaying: 'Playing on %s',
     sourceError: '%s encountered a playback error · trying another source',
@@ -209,7 +216,7 @@ const I18N = {
     sourceRetry: 'Auto try',
     sourceStop: 'Stop trying',
     sourceStopped: 'Automatic switching stopped · keeping %s',
-    sourceRecovering: '%s encountered an error · waiting 12 seconds for recovery',
+    sourceRecovering: '%s encountered an error · waiting briefly for recovery',
     sourceCheckingLabel: 'Checking',
     sourceReadyLabel: 'Video found',
     sourcePlayingLabel: 'Playing',
@@ -227,7 +234,7 @@ const I18N = {
   },
   zh: {
     sourceBlocked:'当前播放器不支持', failureTitle:'这个播放源暂时无法播放', failureCopy:'当前来源不可用或不支持嵌入。请尝试其他播放源，已保留当前选集。', failureAction:'选择其他播放源', exhaustedTitle:'暂未找到可播放的片源', exhaustedCopy:'已尝试可用播放源，该影片可能尚未上线。可以重新试源或手动选择其他来源。',
-    episodes: '选集', sources: '播放源', close: '关闭',
+    episodes: '选集', sources: '设置', settings:'设置', backupSources:'备用线路', close: '关闭',
     langShort: '中',
     back: '返回',
     support: '技术支持',
@@ -238,9 +245,9 @@ const I18N = {
     nextEp: '下一集',
     nextEpTitle: '下一集：第 %s 季 第 %s 集',
     noNextEp: '没有下一集',
-    sourceManual: '当前平台暂不支持自动检测，请手动选择播放源',
+    sourceManual: '正在寻找最佳线路…',
     sourceSelectedLabel: '已选择',
-    sourceChecking: '正在加载 %s，最多等待 90 秒…',
+    sourceChecking: '正在寻找最佳线路…',
     sourceReady: '%s 找到视频 · 等待开始播放',
     sourcePaused:'已暂停 · %s', sourceAutoOff:'关闭自动换源', sourcePlaying: '正在播放 · %s',
     sourceError: '%s 播放解码失败，正在尝试其他源',
@@ -249,7 +256,7 @@ const I18N = {
     sourceRetry: '自动试源',
     sourceStop: '停止试源',
     sourceStopped: '已停止自动切源，保留 %s',
-    sourceRecovering: '%s 出现异常，等待 12 秒尝试恢复',
+    sourceRecovering: '%s 出现异常，短暂等待后尝试恢复',
     sourceCheckingLabel: '检测中',
     sourceReadyLabel: '找到视频',
     sourcePlayingLabel: '正在播放',
@@ -275,32 +282,15 @@ let currentLang = (() => {
 
 const t = key => (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
 
-const SERVERS = [
-  { id: 1, name: 'Rakan',   noteEn: 'Generally better quality.', noteZh: '画质普遍较好。' },
-  { id: 2, name: 'Bard',    noteEn: 'Recommended for recently released movies.', noteZh: '推荐用于最新上映的电影。' },
-  { id: 3, name: 'Xayah',   noteEn: 'Recommended for recently released movies.', noteZh: '推荐用于最新上映的电影。' },
-  { id: 4, name: 'Ekko',    noteEn: 'May have 4K. Generally better quality.', noteZh: '可能支持 4K，画质普遍较好。' },
-  { id: 5, name: 'Naafiri', noteEn: 'May have 4K. Generally better quality.', noteZh: '可能支持 4K，画质普遍较好。' },
-  { id: 6, name: 'Ryze',    noteEn: 'Generally better quality.', noteZh: '画质普遍较好。' },
-];
-
-/* Exact streaming source resolvers (ported from the original player) */
-const serverUrlResolvers = {
-  //1: (p) => p.type === 'movie' ? `https://vidsrc.cc/v2/embed/movie/${p.id}?autoPlay=false` : `https://vidsrc.cc/v2/embed/tv/${p.id}/${p.season}/${p.episode}?autoPlay=false`, // Rakan (vidsrc.cc)
-  1: (p) => p.type === 'movie' ? `https://vixsrc.to/movie/${p.id}?autoPlay=true&lang=en` : `https://vixsrc.to/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true&lang=en`,                                   // Rakan
-  2: (p) => p.type === 'movie' ? `https://moviesapi.to/movie/${p.id}` : `https://moviesapi.to/tv/${p.id}-${p.season}-${p.episode}`,                                                                            // Bard
-  3: (p) => p.type === 'movie' ? `https://vidsrc.sh/embed/movie?tmdb=${p.id}&autoplay=1` : `https://vidsrc.sh/embed/tv?tmdb=${p.id}&season=${p.season}&episode=${p.episode}&autoplay=1&autonext=1`,                        // Xayah
-  4: (p) => p.type === 'movie' ? `https://cinesrc.st/embed/movie/${p.id}?autoplay=true&prioritize=true&lastserver=wave` : `https://cinesrc.st/embed/tv/${p.id}?s=${p.season}&e=${p.episode}&autoplay=true&autonext=false&prioritize=true&lastserver=wave`, // Ekko
-  5: (p) => p.type === 'movie' ? `https://vidfast.vc/movie/${p.id}?autoPlay=true` : `https://vidfast.vc/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true`,                                                   // Naafiri
-  6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
-};
-
-// Xayah and Naafiri explicitly refuse sandboxed embedding. They remain available,
-// but are loaded without the sandbox; all other providers keep the safer isolation.
-const UNSANDBOXED_SOURCES = new Set([3,5]);
-const AUTO_SOURCE_ORDER = [4, 6, 1, 2, 3, 5];
-const SOURCE_CHECK_TIMEOUT_MS = 90000;
-const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
+const SERVERS = window.TFLIX_SOURCE_CONFIG;
+const serverUrlResolvers = Object.fromEntries(SERVERS.map(source => [source.id, source]));
+const SOURCE_CHECK_TIMEOUT_MS = 10000;
+const SOURCE_RECOVERY_TIMEOUT_MS = 4000;
+const SOURCE_HEALTH_STORAGE_KEY = 'tflix_source_health_v1';
+const SOURCE_HEALTH_VERSION = 1;
+const SOURCE_HEALTH_HALF_LIFE_MS = 7 * 86400000;
+const SOURCE_FAILURE_LIMIT = 3;
+const SOURCE_CIRCUIT_MS = 5 * 60000;
 const SOURCE_PROBE_TIMEOUT_MS = 30000;
 
 /* ─── STATE ─── */
@@ -325,8 +315,12 @@ let sourceSequence = [];
 let sourceSequenceIndex = 0;
 let sourceCheckTimer = null;
 let playerMediaDetected = false;
-let autoTryEnabled = Boolean(window.__TFLIX_PLAYER_ORIGIN__);
+let manualOverride = false;
+let autoTryEnabled = true;
 let sourceRecoveryTimer = null;
+let sourceLoadStartedAt = 0;
+let sourceAttemptReadyRecorded = false;
+let sourceAttemptFailureRecorded = false;
 
 /* ─── PARAMS ─── */
 function readParams() {
@@ -336,14 +330,18 @@ function readParams() {
   if (!id || (type !== 'movie' && type !== 'tv')) return null;
 
   let server = parseInt(p.get('server'), 10);
+  const explicitServer = p.has('server');
+  manualOverride = p.has('manual') ? p.get('manual') === '1' : explicitServer;
+  if (localStorage.getItem(MANUAL_SOURCE_KEY) === '1') manualOverride = true;
   if (type === 'tv') {
     const season = parseInt(p.get('s'), 10) || 1;
     const episode = parseInt(p.get('e'), 10) || 1;
-    server = rememberedEpisodeServer(id, season, episode) || server;
+    const remembered = rememberedEpisodeServer(id, season, episode);
+    if (remembered) { server = remembered; manualOverride = true; }
   }
   if (!server || !serverUrlResolvers[server]) server = defaultServer();
 
-  const out = { type, id, server };
+  const out = { type, id, server, manualOverride };
   if (type === 'tv') { out.season = parseInt(p.get('s'), 10) || 1; out.episode = parseInt(p.get('e'), 10) || 1; }
   return out;
 }
@@ -376,7 +374,10 @@ function rememberCurrentEpisodeServer() {
 }
 function applyEpisodeServerPreference() {
   if(state?.type!=='tv') return state?.server;
-  state.server=rememberedEpisodeServer(state.id,state.season,state.episode)||defaultServer();
+  const remembered=rememberedEpisodeServer(state.id,state.season,state.episode);
+  manualOverride=Boolean(remembered||localStorage.getItem(MANUAL_SOURCE_KEY)==='1');
+  autoTryEnabled=!manualOverride;
+  state.server=remembered|| (manualOverride?defaultServer():(orderedHealthySources()[0]||defaultServer()));
   return state.server;
 }
 
@@ -386,16 +387,70 @@ function syncUrl() {
   p.set('id', state.id);
   if (state.type === 'tv') { p.set('s', state.season); p.set('e', state.episode); }
   p.set('server', state.server);
+  p.set('manual',manualOverride?'1':'0');
   history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
 }
 
 function sourceUrlFor(server, probe = false) {
-  const url = new URL(serverUrlResolvers[server]({...state,server}), location.href);
+  const url = new URL(serverUrlResolvers[server].buildUrl(state.type,state.id,state.season||1,state.episode||1), location.href);
   if (probe) {
     for (const key of ['autoplay','autoPlay']) if (url.searchParams.has(key)) url.searchParams.set(key, 'false');
     url.searchParams.set('tflix_probe', '1');
   }
   return url.href;
+}
+
+function readSourceHealth() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(SOURCE_HEALTH_STORAGE_KEY)||'null');
+    if(saved?.version===SOURCE_HEALTH_VERSION && saved.sources && typeof saved.sources==='object') return saved;
+  } catch {}
+  return {version:SOURCE_HEALTH_VERSION,sources:{}};
+}
+function saveSourceHealth(data) { try { localStorage.setItem(SOURCE_HEALTH_STORAGE_KEY,JSON.stringify(data)); } catch {} }
+function sourceHealthEntry(data,id) {
+  return data.sources[id] ||= {successes:[],failures:[],readyMs:[],consecutiveFailures:0,blockedUntil:0};
+}
+function weightedEvents(events,weight,now) {
+  return events.reduce((total,item)=>{
+    const at=typeof item==='number'?item:item.at;
+    if(!Number.isFinite(at)||at>now+60000)return total;
+    return total+weight*Math.pow(0.5,Math.max(0,now-at)/SOURCE_HEALTH_HALF_LIFE_MS);
+  },0);
+}
+function sourceHealthScore(id,now=Date.now(),health=readSourceHealth()) {
+  const entry=health.sources[id];
+  if(!entry)return 0;
+  const ready=Array.isArray(entry.readyMs)?entry.readyMs:[];
+  const latency=ready.reduce((sum,item)=>{
+    if(!item||!Number.isFinite(item.ms)||!Number.isFinite(item.at))return sum;
+    const decay=Math.pow(0.5,Math.max(0,now-item.at)/SOURCE_HEALTH_HALF_LIFE_MS);
+    const speed=Math.max(-0.5,Math.min(0.7,0.7-item.ms/30000));
+    return sum+speed*decay;
+  },0);
+  return weightedEvents(entry.successes||[],2,now)+weightedEvents(entry.failures||[],-3,now)+latency;
+}
+function orderedHealthySources(now=Date.now()) {
+  const health=readSourceHealth();
+  return SERVERS.filter(source=>(health.sources[source.id]?.blockedUntil||0)<=now)
+    .sort((a,b)=>sourceHealthScore(b.id,now,health)-sourceHealthScore(a.id,now,health)||a.id-b.id)
+    .map(source=>source.id);
+}
+function recordSourceSuccess(id) {
+  if(sourceAttemptReadyRecorded)return;
+  const now=Date.now(),health=readSourceHealth(),entry=sourceHealthEntry(health,id);
+  entry.successes.push(now);entry.successes=entry.successes.slice(-100);
+  entry.readyMs.push({at:now,ms:Math.max(0,now-sourceLoadStartedAt)});entry.readyMs=entry.readyMs.slice(-10);
+  entry.consecutiveFailures=0;entry.blockedUntil=0;
+  sourceAttemptReadyRecorded=true;saveSourceHealth(health);
+}
+function recordSourceFailure(id) {
+  if(sourceAttemptFailureRecorded)return;
+  const now=Date.now(),health=readSourceHealth(),entry=sourceHealthEntry(health,id);
+  entry.failures.push(now);entry.failures=entry.failures.slice(-100);
+  entry.consecutiveFailures=(entry.consecutiveFailures||0)+1;
+  if(entry.consecutiveFailures>=SOURCE_FAILURE_LIMIT)entry.blockedUntil=now+SOURCE_CIRCUIT_MS;
+  sourceAttemptFailureRecorded=true;saveSourceHealth(health);
 }
 
 function clearSourceProbes() {
@@ -442,7 +497,7 @@ function probeAllSources() {
     // Probes may load metadata but must never receive autoplay permission;
     // only the one visible player gets an audio/playback pipeline.
     frame.setAttribute('allow', "autoplay 'none'; encrypted-media *; picture-in-picture *; fullscreen *; web-share *");
-    if (!UNSANDBOXED_SOURCES.has(server.id)) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+    if (server.sandboxEnabled) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
     const src = sourceUrlFor(server.id, true);
     frame.src = `${bridgeOrigin}?src=${encodeURIComponent(src)}&source=${server.id}&probe=1`;
     const probe = { id: server.id, frame, ticket, timer: null };
@@ -476,16 +531,14 @@ function loadPlayer(continueAutoTry = false) {
     clearTimeout(sourceCheckTimer);
     const contentKey=[state.type,state.id,state.season||0,state.episode||0].join(':');
     if(state._sourceStatusKey!==contentKey){sourceStatuses={};probeStatuses={};state._sourceStatusKey=contentKey;probeAllSources();}
-    sourceSequence = [state.server, ...AUTO_SOURCE_ORDER.filter(id => id !== state.server)];
+    sourceSequence = [state.server, ...orderedHealthySources().filter(id => id !== state.server)];
     sourceSequenceIndex = 0;
     playerMediaDetected = false;
   }
   playerMediaDetected = false;
-  const canDetect = Boolean(window.__TFLIX_PLAYER_ORIGIN__);
-  $('retry-source-btn').hidden = !canDetect;
-  sourceStatuses[state.server] = canDetect ? 'checking' : 'selected';
-  updateSourceStatus(canDetect ? 'checking' : 'manual', canDetect
-    ? t('sourceChecking').replace('%s', serverName(state.server)) : t('sourceManual'));
+  $('retry-source-btn').hidden = false;
+  sourceStatuses[state.server] = 'checking';
+  updateSourceStatus('checking', t('sourceChecking'));
   updateServerCards();
 
   // Recreate the iframe on every load so the Permissions Policy
@@ -498,13 +551,13 @@ function loadPlayer(continueAutoTry = false) {
   frame.id = 'player';
   // Keep compatible third-party frames isolated. Xayah and Naafiri reject a
   // sandboxed ancestor, so only those two providers use a regular iframe.
-  if (!UNSANDBOXED_SOURCES.has(state.server)) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  if (serverUrlResolvers[state.server].sandboxEnabled) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   frame.allowFullscreen = true;
   // Use "*" so the fullscreen permission cascades to nested cross-origin
   // iframes (Xayah / Ekko load the real player inside a second iframe).
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
-  frame.onload = () => {if($('player')===frame)loader.classList.add('hide');};
+  frame.onload = () => {};
   // Use replace so iframe loads don't pollute the browser history stack
   // Desktop custom protocols cannot send an HTTP Referer to embed providers.
   // The loopback wrapper supplies one without moving the app or its storage.
@@ -514,20 +567,20 @@ function loadPlayer(continueAutoTry = false) {
   old.replaceWith(frame);
 
   clearTimeout(sourceCheckTimer);
-  if (window.__TFLIX_PLAYER_ORIGIN__) {
-    sourceCheckTimer = setTimeout(() => {
-      if (playerMediaDetected) return;
-      if (autoTryEnabled) tryNextSource();
-      else { sourceStatuses[state.server]='failed'; updateServerCards(); updateSourceStatus('failed', t('failureTitle')); showPlaybackFailure(false); }
-    }, SOURCE_CHECK_TIMEOUT_MS);
-  }
-
-  setTimeout(() => {if($('player')===frame)loader.classList.add('hide');}, 4000); // fail-safe
+  sourceLoadStartedAt=Date.now();
+  sourceAttemptReadyRecorded=false;sourceAttemptFailureRecorded=false;
+  sourceCheckTimer = setTimeout(() => {
+    if (playerMediaDetected) return;
+    recordSourceFailure(state.server);
+    sourceStatuses[state.server]='failed';updateServerCards();
+    if (autoTryEnabled) tryNextSource();
+    else { updateSourceStatus('failed', t('failureTitle')); showPlaybackFailure(false); }
+  }, SOURCE_CHECK_TIMEOUT_MS);
   syncUrl();
   if (state.title) updateTitleBar();
 }
 
-function serverName(id) { return SERVERS.find(server => server.id === id)?.name || `#${id}`; }
+function serverName(id) { return serverUrlResolvers[id]?.name || `#${id}`; }
 
 function updateSourceStatus(status, message) {
   const region = $('source-health');
@@ -536,7 +589,6 @@ function updateSourceStatus(status, message) {
   region.dataset.state = status;
   $('sources-btn').dataset.state = status;
   $('sources-btn').title = message;
-  $('current-source').textContent = serverName(state.server);
   label.textContent = message;
   $('retry-source-btn').textContent = t(autoTryEnabled ? (playerMediaDetected?'sourceAutoOff':'sourceStop') : 'sourceRetry');
 }
@@ -563,9 +615,14 @@ function updateServerCards() {
 function tryNextSource() {
   if (!state || playerMediaDetected || !autoTryEnabled) return;
   clearTimeout(sourceCheckTimer);
+  recordSourceFailure(state.server);
   sourceStatuses[state.server] = 'failed';
-  sourceSequenceIndex += 1;
-  const next = sourceSequence[sourceSequenceIndex];
+  let next=null;
+  while(++sourceSequenceIndex<sourceSequence.length) {
+    const candidate=sourceSequence[sourceSequenceIndex];
+    const entry=readSourceHealth().sources[candidate];
+    if((entry?.blockedUntil||0)<=Date.now()){next=candidate;break;}
+  }
   if (!next) {
     updateServerCards();
     updateSourceStatus('failed', t('sourceNotFound'));
@@ -590,6 +647,7 @@ function onPlayerMediaEvent(event) {
     if (!playerMediaDetected) return;
     if (!autoTryEnabled) {
       playerMediaDetected=false;
+      recordSourceFailure(state.server);
       sourceStatuses[state.server]='failed';
       updateServerCards();
       updateSourceStatus('failed', t('failureTitle'));
@@ -603,6 +661,7 @@ function onPlayerMediaEvent(event) {
       sourceRecoveryTimer = null;
       if (state.server !== failedServer || !autoTryEnabled) return;
       playerMediaDetected = false;
+      recordSourceFailure(failedServer);
       tryNextSource();
     }, SOURCE_RECOVERY_TIMEOUT_MS);
     return;
@@ -615,6 +674,8 @@ function onPlayerMediaEvent(event) {
   clearTimeout(sourceCheckTimer);
   if (sourceStatuses[state.server] === 'playing' && !playing) return;
   playerMediaDetected = true;
+  recordSourceSuccess(state.server);
+  $('player-loading')?.classList.add('hide');
   sourceStatuses[state.server] = playing ? 'playing' : 'available';
   updateServerCards();
   updateSourceStatus(playing ? 'playing' : 'available', t(playing ? 'sourcePlaying' : 'sourceReady').replace('%s', serverName(state.server)));
@@ -666,16 +727,22 @@ function buildServers() {
     el.className = 'server-card' + (s.id === state.server ? ' selected' : '');
     el.dataset.id = s.id;
     el.disabled = false;
-    const note = currentLang === 'zh' ? s.noteZh : s.noteEn;
     el.innerHTML = `
       <span class="s-dot"></span>
       <span class="s-meta">
         <span class="s-name">${esc(s.name)}</span>
         <span class="s-state"></span>
-        <span class="s-note">${esc(note)}</span>
       </span>`;
     el.addEventListener('click', () => {
-      if (s.id === state.server) return;
+      if (s.id === state.server) {
+        manualOverride=true;autoTryEnabled=false;
+        localStorage.setItem(MANUAL_SOURCE_KEY,'1');localStorage.setItem(STORAGE_KEY,String(s.id));
+        rememberCurrentEpisodeServer();updateSourceStatus('manual',t('sourceStopped').replace('%s',serverName(s.id)));syncUrl();
+        return;
+      }
+      manualOverride=true;
+      localStorage.setItem(MANUAL_SOURCE_KEY,'1');
+      localStorage.setItem(STORAGE_KEY,String(s.id));
       autoTryEnabled = false;
       state.server = s.id;
       rememberCurrentEpisodeServer();
@@ -696,7 +763,8 @@ function applyTranslations() {
   $('sources-label').textContent = t('sources');
   $('drawer-close').textContent = t('close');
   $('drawer-scrim').setAttribute('aria-label',t('close'));
-  $('drawer-title').textContent = t($('watch-drawer').dataset.panel === 'episodes' ? 'episodes' : 'sources');
+  $('drawer-title').textContent = t($('watch-drawer').dataset.panel === 'episodes' ? 'episodes' : 'settings');
+  document.querySelector('.backup-sources > summary').textContent=t('backupSources');
   $('episodes-btn').hidden = state?.type !== 'tv';
   $('back-btn').title = t('back');
   $('back-btn').setAttribute('aria-label', t('back'));
@@ -713,6 +781,7 @@ function applyTranslations() {
     updateNextBtn();
     buildServers();
   }
+  $('player-loading-label').textContent=currentLang==='zh'?'正在寻找最佳线路…':'Finding the best stream…';
 }
 
 async function changeLanguage(newLang) {
@@ -1056,7 +1125,7 @@ function openWatchDrawer(panel) {
   drawer.dataset.panel = panel;
   drawer.hidden = false;
   $('drawer-scrim').hidden = false;
-  $('drawer-title').textContent = t(panel === 'episodes' ? 'episodes' : 'sources');
+  $('drawer-title').textContent = t(panel === 'episodes' ? 'episodes' : 'settings');
   for (const id of ['episodes-btn','sources-btn']) $(id).setAttribute('aria-expanded',String($(id) === trigger));
   $('drawer-close').focus({preventScroll:true});
 }
@@ -1101,6 +1170,10 @@ $('back-btn').addEventListener('click', () => {
     document.title = 'TFLIX';
     return;
   }
+
+  manualOverride=Boolean(state.manualOverride);
+  autoTryEnabled=!manualOverride;
+  if(!manualOverride) state.server=orderedHealthySources()[0]||defaultServer();
 
   loadPlayer();              // start streaming immediately
 

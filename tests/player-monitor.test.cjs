@@ -4,27 +4,37 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 function monitor(duration = 120, readyState = 2, text = '') {
-  const signals = [], listeners = {};
-  const video = { duration, readyState, addEventListener(type, fn) { listeners[type] = fn; } };
+  const signals = [], listeners = {};let now=1000;
+  const video = { duration, readyState, currentTime:0, paused:false, seeking:false, ended:false, addEventListener(type, fn) { (listeners[type] ||= []).push(fn); } };
   const document = { body: { innerText: text }, querySelectorAll() { return [video]; } };
   const window = { top: { postMessage(data) { signals.push(data.type); } }, self: {} };
   vm.runInNewContext(fs.readFileSync('src-tauri/src/player_monitor.js', 'utf8'), {
-    window, document, MutationObserver: class { observe() {} }
+    window, document, Date:{now:()=>now}, setInterval(fn){listeners.interval=fn;return 1;}, MutationObserver: class { observe() {} }
   });
-  return { signals, listeners };
+  return { signals, listeners, video, fire(type){for(const fn of listeners[type]||[])fn();}, setNow(value){now=value;} };
 }
 
 test('reports errors after media readiness even before playback starts', () => {
-  const { signals, listeners } = monitor();
-  listeners.error();
-  listeners.error();
+  const { signals, fire } = monitor();
+  fire('error');
+  fire('error');
   assert.deepEqual(signals, ['tflix:media-ready', 'tflix:media-error']);
 });
 
 test('does not accept an empty video as successful playback', () => {
-  const { signals, listeners } = monitor(0, 0);
-  listeners.playing();
+  const { signals, fire } = monitor(0, 0);
+  fire('playing');
   assert.deepEqual(signals, []);
+});
+
+test('reports a playback stall after eight seconds but ignores a paused video',()=>{
+  const state=monitor();
+  state.fire('playing');
+  state.setNow(9500);state.listeners.interval();
+  assert.ok(state.signals.includes('tflix:media-error'));
+  const paused=monitor();paused.fire('playing');paused.video.paused=true;
+  paused.setNow(30000);paused.listeners.interval();
+  assert.equal(paused.signals.includes('tflix:media-error'),false);
 });
 
 function playerState() {
@@ -33,9 +43,11 @@ function playerState() {
   const cleared = [];
   const context = {
     state: { server: 4 }, sourceStatuses: {}, playerMediaDetected: false, sourceCheckTimer: 42,
-    autoTryEnabled: true, sourceRecoveryTimer: null, SOURCE_RECOVERY_TIMEOUT_MS: 12000,
+    autoTryEnabled: true, sourceRecoveryTimer: null, SOURCE_RECOVERY_TIMEOUT_MS: 4000,
     setTimeout(fn, delay) { context.recovery = fn; context.delay = delay; return 99; },
     clearTimeout(id) { cleared.push(id); }, isCurrentPlayerFrame() { return true; },
+    recordSourceSuccess(){context.successes=(context.successes||0)+1;},recordSourceFailure(){context.failures=(context.failures||0)+1;},
+    $: id => ({classList:{add(){}}}), sourceAttemptFailureRecorded:false,
     hidePlaybackFailure() {}, updateServerCards() {}, updateSourceStatus() {}, t() { return '%s'; }, serverName() { return 'Ekko'; },
     tryNextSource() { context.nextCalls++; }, nextCalls: 0
   };
@@ -62,7 +74,7 @@ test('media errors allow recovery before advancing to the next source', () => {
   send('tflix:media-ready');
   send('tflix:media-error');
   assert.equal(context.nextCalls, 0);
-  assert.equal(context.delay, 12000);
+  assert.equal(context.delay, 4000);
   context.recovery();
   assert.equal(context.nextCalls, 1);
 });

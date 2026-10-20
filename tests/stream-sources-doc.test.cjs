@@ -1,4 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const sourceConfig=require('../stream/source-config.js');
 
 test('local playback source OpenAPI catalog covers all configured providers',()=>{
   const doc=JSON.parse(fs.readFileSync('docs/stream-sources/swagger.json','utf8'));
@@ -19,10 +20,10 @@ test('local playback source OpenAPI catalog covers all configured providers',()=
 
 test('parallel probes disable provider autoplay and use every configured source',()=>{
   const html=fs.readFileSync('stream/index.html','utf8');
-  const start=html.indexOf('const SERVERS = [');
-  const end=html.indexOf('/* ─── PLAYER ─── */');
+  const start=html.indexOf('const SERVERS = window.TFLIX_SOURCE_CONFIG;');
+  const end=html.indexOf('function clearSourceProbes()',start);
   assert.ok(start>=0 && end>start);
-  const context={URL,location:{href:'https://tflix.example/stream/index.html'},window:{addEventListener(){}}};
+  const context={URL,location:{href:'https://tflix.example/stream/index.html'},window:{TFLIX_SOURCE_CONFIG:sourceConfig,addEventListener(){}}};
   vm.runInNewContext(`${html.slice(start,end)}\nstate={type:'tv',id:'1399',season:1,episode:1}; result=SERVERS.map(server=>sourceUrlFor(server.id,true));`,context);
   assert.equal(context.result.length,6);
   for(const raw of context.result){

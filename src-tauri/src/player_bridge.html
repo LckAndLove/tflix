@@ -1,22 +1,22 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="referrer" content="origin">
 <style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}body{overflow:hidden;color:#ddd;font:16px system-ui}</style>
-</head><body><script>
+</head><body><script src="/source-config.js"></script><script>
 // A real HTTP document gives HTTPS embeds an HTTP Referer. Custom app
 // protocols cannot provide one, even with referrerPolicy="origin".
-const hosts = ['vixsrc.to', 'moviesapi.to', 'vidsrc.sh', 'cinesrc.st', 'vidfast.vc', 'vidlink.pro'];
 try {
   const params = new URLSearchParams(location.search);
   const source = new URL(params.get('src'));
   const sourceId = Number(params.get('source'));
-  if (source.protocol !== 'https:' || !hosts.includes(source.hostname) || source.username || source.password || source.port) throw new Error('Invalid player source');
+  const config = window.TFLIX_SOURCE_CONFIG.find(item => item.id === sourceId);
+  if (!config || source.protocol !== 'https:' || source.hostname !== config.host || source.username || source.password || source.port) throw new Error('Invalid player source');
   const frame = document.createElement('iframe');
-  frame.referrerPolicy = 'origin';
+  if (config.requireReferer) frame.referrerPolicy = 'origin';
   frame.allowFullscreen = true;
   frame.allow = 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *';
   // Xayah and Naafiri reject a sandboxed ancestor. Keep the other providers
   // isolated, while allowing those two explicit source IDs to load normally.
-  if (sourceId !== 3 && sourceId !== 5) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  if (config.sandboxEnabled) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   // The media monitor runs inside the provider's frame and reports to its
   // immediate parent. Forward only its typed readiness/progress signals to
   // the app so both the visible player and hidden source probes can observe

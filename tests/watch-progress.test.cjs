@@ -24,7 +24,7 @@ test('corrupted stored positions do not break playback readiness',()=>{
 test('native media seek accepts only the app top frame and compatible duration',()=>{
  let receive;const listeners={},video={currentTime:0,duration:120,readyState:2,isConnected:true,addEventListener:(n,f)=>listeners[n]=f};const top={postMessage(){}};
  const window={top,self:{},addEventListener:(n,f)=>receive=f};
- vm.runInNewContext(fs.readFileSync('src-tauri/src/player_monitor.js','utf8'),{window,document:{body:{innerText:''},querySelectorAll:()=>[video]},MutationObserver:class{observe(){}}});
+ vm.runInNewContext(fs.readFileSync('src-tauri/src/player_monitor.js','utf8'),{window,document:{body:{innerText:''},querySelectorAll:()=>[video]},setInterval(){return 1;},MutationObserver:class{observe(){}}});
  receive({source:{},data:{type:'tflix:resume',time:30,duration:120}});assert.equal(video.currentTime,0);
  receive({source:top,data:{type:'tflix:resume',time:30,duration:140}});assert.equal(video.currentTime,0);
  receive({source:top,data:{type:'tflix:resume',time:30,duration:120}});assert.equal(video.currentTime,30);

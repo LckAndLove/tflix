@@ -19,6 +19,10 @@ pub fn start() -> io::Result<String> {
                     .with_header(Header::from_bytes("Content-Type", "text/html; charset=utf-8").unwrap())
                     .with_header(Header::from_bytes("Referrer-Policy", "origin").unwrap())
                     .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap())
+            } else if valid_host && request.method() == &Method::Get && path == "/source-config.js" {
+                Response::from_string(include_str!("../../stream/source-config.js"))
+                    .with_header(Header::from_bytes("Content-Type", "application/javascript; charset=utf-8").unwrap())
+                    .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap())
             } else {
                 Response::from_string("Not found").with_status_code(404)
             };
