@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '1.3.0';
+  var APP_VERSION = '1.0.0';
 
   // Function to open external URLs via Tauri or top navigation
   function openExternalUrl(url) {

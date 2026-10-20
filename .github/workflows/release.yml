@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (leave blank to use version 1.1.2)'
+        description: 'Release tag (leave blank to use version 1.0.0)'
         required: false
         default: ''
 
@@ -176,7 +176,7 @@ jobs:
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
           else
-            TAG="v1.3.0"
+            TAG="v1.0.0"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Using release tag: ${TAG}"
@@ -195,7 +195,7 @@ jobs:
           const fs = require("fs");
           const path = require("path");
 
-          const tag = process.env.TAG_NAME || "v1.3.0";
+          const tag = process.env.TAG_NAME || "v1.0.0";
           const version = tag.replace(/^v/, "");
           const repo = "LckAndLove/tflix";
           const downloadBase = `https://github.com/${repo}/releases/download/${tag}`;

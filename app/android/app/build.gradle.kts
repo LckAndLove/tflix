@@ -13,8 +13,8 @@ android {
         targetSdk = 35
         // App version: bump BOTH on every release — versionName is what users
         // see; versionCode must strictly increase for Android to accept an update.
-        versionCode = 3
-        versionName = "1.3.0"
+        versionCode = 4
+        versionName = "1.0.0"
     }
 
     val keystoreFile = file("release.p12")

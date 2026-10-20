@@ -1,6 +1,6 @@
 [package]
 name = "tflix"
-version = "1.3.0"
+version = "1.0.0"
 description = "TFLIX — Watch Movies & TV desktop app."
 authors = ["Tomas Nunes"]
 license = "MIT"

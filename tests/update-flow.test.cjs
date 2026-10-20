@@ -5,12 +5,12 @@ const html=fs.readFileSync('index.html','utf8');
 const check=html.slice(html.indexOf('async function checkForUpdates('),html.indexOf('\nasync function startUpdate()'));
 function fixture(invoke){
  const messages=[],updates=[];let fetches=0;
- const context={window:invoke?{__TAURI__:{core:{invoke}}}:{},APP_VERSION:'1.3.0',updateCheckInFlight:false,updateInstalling:false,console:{warn(){}},t:key=>({checkingUpdate:'Checking',updateLatest:'Latest %s',updateFailed:'请稍后重试'}[key]),toast:text=>messages.push(text),showUpdateModal:data=>updates.push(data),semverGt:(a,b)=>a>b,AbortSignal,fetch:async()=>{fetches++;return{ok:true,json:async()=>({version:'1.3.1',notes:'New'})};}};
+ const context={window:invoke?{__TAURI__:{core:{invoke}}}:{},APP_VERSION:'1.0.0',updateCheckInFlight:false,updateInstalling:false,console:{warn(){}},t:key=>({checkingUpdate:'Checking',updateLatest:'Latest %s',updateFailed:'请稍后重试'}[key]),toast:text=>messages.push(text),showUpdateModal:data=>updates.push(data),semverGt:(a,b)=>a>b,AbortSignal,fetch:async()=>{fetches++;return{ok:true,json:async()=>({version:'1.0.1',notes:'New'})};}};
  vm.createContext(context);vm.runInContext(check,context);return{context,messages,updates,fetches:()=>fetches};
 }
 test('native no-update result never falls through to GitHub API',async()=>{
  const f=fixture(async()=>null);await f.context.checkForUpdates(true);
- assert.equal(f.fetches(),0);assert.equal(f.messages.at(-1),'Latest v1.3.0');
+ assert.equal(f.fetches(),0);assert.equal(f.messages.at(-1),'Latest v1.0.0');
 });
 test('native technical errors become friendly messages and remain silent for automatic checks',async()=>{
  const f=fixture(async()=>{throw Error('HTTP 403 rate limited');});
