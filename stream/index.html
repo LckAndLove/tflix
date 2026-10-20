@@ -350,6 +350,7 @@ function syncUrl() {
 
 /* ─── PLAYER ─── */
 function loadPlayer(continueAutoTry = false) {
+  resetWatchPlaybackState();
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
   $('playback-failure').hidden = true;
@@ -825,6 +826,12 @@ window.addEventListener('message',event=>{
 });
 
 let chromeTimer=null, watchPlaying=false;
+function resetWatchPlaybackState() {
+  watchPlaying=false;
+  clearTimeout(chromeTimer);
+  chromeTimer=null;
+  document.body.classList.remove('controls-idle');
+}
 function revealWatchControls() {
   document.body.classList.remove('controls-idle');
   clearTimeout(chromeTimer);
@@ -985,6 +992,14 @@ $('back-btn').addEventListener('click', () => {
     }
   }
 
+  // Keep remote navigation in sync with programmatic focus restoration and Tab.
+  document.addEventListener('focusin', e => {
+    if (!vis(e.target) || e.target.disabled || !['BUTTON','SELECT'].includes(e.target.tagName)) return;
+    if (cur) cur.classList.remove('kf');
+    cur=e.target;
+    if (active) cur.classList.add('kf');
+  });
+
   document.addEventListener('keydown', e => {
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     const k = e.key;
@@ -1001,7 +1016,7 @@ $('back-btn').addEventListener('click', () => {
     }
 
     if (k === 'Enter') {
-      if (!cur) { focusInitial(); return; }
+      if (!cur || !vis(cur) || cur.disabled || !getSections().some(section=>section.items.includes(cur))) { e.preventDefault(); focusInitial(); return; }
       if (cur.tagName === 'SELECT') {
         // Older WebViews lack showPicker — there the native Enter opens it.
         if (typeof cur.showPicker === 'function') { e.preventDefault(); try { cur.showPicker(); } catch (err) {} }

@@ -18,3 +18,11 @@ test('open settings keep watch controls visible',()=>{
  const {context,elements,classes}=chrome();elements['watch-drawer'].hidden=false;
  context.receive({data:{type:'tflix:media-playing'}});context.idle();assert.ok(!classes.has('controls-idle'));
 });
+
+test('a new media load cancels idle chrome inherited from the previous video',()=>{
+ const {context,classes}=chrome();
+ context.receive({data:{type:'tflix:media-playing'}});context.idle();assert.ok(classes.has('controls-idle'));
+ context.resetWatchPlaybackState();assert.ok(!classes.has('controls-idle'));
+ context.receive({data:{type:'tflix:interaction'}});context.idle();assert.ok(!classes.has('controls-idle'));
+ context.receive({data:{type:'tflix:media-playing'}});context.idle();assert.ok(classes.has('controls-idle'));
+});
