@@ -6,15 +6,17 @@
 // protocols cannot provide one, even with referrerPolicy="origin".
 const hosts = ['vixsrc.to', 'moviesapi.to', 'vidsrc.sh', 'cinesrc.st', 'vidfast.vc', 'vidlink.pro'];
 try {
-  const source = new URL(new URLSearchParams(location.search).get('src'));
+  const params = new URLSearchParams(location.search);
+  const source = new URL(params.get('src'));
+  const sourceId = Number(params.get('source'));
   if (source.protocol !== 'https:' || !hosts.includes(source.hostname) || source.username || source.password || source.port) throw new Error('Invalid player source');
   const frame = document.createElement('iframe');
   frame.referrerPolicy = 'origin';
   frame.allowFullscreen = true;
   frame.allow = 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *';
-  // Sandbox every provider, including those that refuse sandboxed embeds.
-  // The monitor skips incompatible providers rather than letting them navigate the app.
-  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  // Xayah and Naafiri reject a sandboxed ancestor. Keep the other providers
+  // isolated, while allowing those two explicit source IDs to load normally.
+  if (sourceId !== 3 && sourceId !== 5) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   // The provider posts episode changes to its immediate wrapper. Forward only
   // this exact provider frame's validated selection, never arbitrary messages.
   window.addEventListener('message',event=>{

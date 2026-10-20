@@ -291,10 +291,10 @@ const serverUrlResolvers = {
   6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
 };
 
-// Xayah and Naafiri explicitly refuse sandboxed embedding. Keep isolation, and exclude
-// this confirmed incompatible provider rather than serving its error page.
-const UNSUPPORTED_SOURCES = new Set([3,5]);
-const AUTO_SOURCE_ORDER = [4, 6, 1, 2];
+// Xayah and Naafiri explicitly refuse sandboxed embedding. They remain available,
+// but are loaded without the sandbox; all other providers keep the safer isolation.
+const UNSANDBOXED_SOURCES = new Set([3,5]);
+const AUTO_SOURCE_ORDER = [4, 6, 1, 2, 3, 5];
 const SOURCE_CHECK_TIMEOUT_MS = 90000;
 const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
 
@@ -356,10 +356,6 @@ function loadPlayer(continueAutoTry = false) {
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
   $('playback-failure').hidden = true;
-  if (UNSUPPORTED_SOURCES.has(state.server)) {
-    state.server = 4;
-    document.querySelectorAll('.server-card').forEach(card=>card.classList.toggle('selected',Number(card.dataset.id)===4));
-  }
   const src = serverUrlResolvers[state.server](state);
   const loader = $('player-loading');
   loader.classList.remove('hide');
@@ -388,8 +384,9 @@ function loadPlayer(continueAutoTry = false) {
   const old = $('player');
   const frame = document.createElement('iframe');
   frame.id = 'player';
-  // Keep third-party frames from replacing the app or opening popups.
-  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  // Keep compatible third-party frames isolated. Xayah and Naafiri reject a
+  // sandboxed ancestor, so only those two providers use a regular iframe.
+  if (!UNSANDBOXED_SOURCES.has(state.server)) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   frame.allowFullscreen = true;
   // Use "*" so the fullscreen permission cascades to nested cross-origin
   // iframes (Xayah / Ekko load the real player inside a second iframe).
@@ -400,7 +397,7 @@ function loadPlayer(continueAutoTry = false) {
   // Desktop custom protocols cannot send an HTTP Referer to embed providers.
   // The loopback wrapper supplies one without moving the app or its storage.
   frame.src = window.__TFLIX_PLAYER_ORIGIN__
-    ? `${window.__TFLIX_PLAYER_ORIGIN__}?src=${encodeURIComponent(src)}`
+    ? `${window.__TFLIX_PLAYER_ORIGIN__}?src=${encodeURIComponent(src)}&source=${state.server}`
     : src;
   old.replaceWith(frame);
 
@@ -435,7 +432,7 @@ function updateSourceStatus(status, message) {
 function updateServerCards() {
   document.querySelectorAll('.server-card').forEach(card => {
     const id = Number(card.dataset.id);
-    const status = UNSUPPORTED_SOURCES.has(id) ? 'blocked' : sourceStatuses[id] || 'unknown';
+    const status = sourceStatuses[id] || 'unknown';
     card.dataset.status = status;
     const label = card.querySelector('.s-state');
     if (!label) return;
@@ -445,7 +442,7 @@ function updateServerCards() {
       checking: t('sourceCheckingLabel'),
       available: t('sourceReadyLabel'),
       playing: t('sourcePlayingLabel'),
-      failed: t('sourceFailedLabel'), blocked: t('sourceBlocked')
+      failed: t('sourceFailedLabel')
     };
     label.textContent = labels[status];
   });
@@ -556,7 +553,7 @@ function buildServers() {
     const el = document.createElement('button');
     el.className = 'server-card' + (s.id === state.server ? ' selected' : '');
     el.dataset.id = s.id;
-    el.disabled = UNSUPPORTED_SOURCES.has(s.id);
+    el.disabled = false;
     const note = currentLang === 'zh' ? s.noteZh : s.noteEn;
     el.innerHTML = `
       <span class="s-dot"></span>
