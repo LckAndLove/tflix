@@ -1,58 +1,64 @@
-
 <div align="center">
   <img src="assets/tflix-banner.svg" alt="TFLIX" />
 </div>
-<br/>
 
-[TFLIX](https://tflix.nunesnetwork.com/) is a simple movie and TV show search website powered by the TMDB API.
-It lets users discover movies and TV shows and stream them directly within the website.
+# TFLIX
 
-Live demo: [tflix.nunesnetwork.com](https://tflix.nunesnetwork.com/)
+TFLIX is a movie and TV discovery and streaming app powered by [TMDB](https://www.themoviedb.org/). Browse titles, view details, choose a streaming source, and watch in the app.
 
-> **Alternative**: [TMDB-Player](https://github.com/TomasTNunes/TMDB-Player) — an open-source browser extension that lets you stream your favorite movies and TV shows directly through the TMDB website.
+**Website:** [tflix.nunesnetwork.com](https://tflix.nunesnetwork.com/)
 
 ## Features
 
-- Search movies and TV shows from TMDB
-- View details such as title, release date, and poster
-- Stream directly within TFLIX
-- Choose from multiple predefined streaming servers
-- Use it as a native **Windows desktop app** with no ads
+- Search and browse movies and TV shows using TMDB metadata
+- View title details, artwork, ratings, release information, and episode descriptions
+- Select a TV season and episode from the title page
+- Choose from six embedded streaming sources; the selected source can be changed from the player
+- Resume recently watched titles using locally saved playback progress
+- Use the website, the Tauri desktop app, or the Android app for phones, tablets, and Android TV
+- Block pop-up windows opened by embedded players in the desktop and Android apps
 
-## Desktop App (Windows)
+The app uses TMDB IDs to build embed URLs. Playback availability and subtitle timing depend on the selected third-party source and its version of the title.
 
-Prefer a real app over a browser tab? TFLIX is also available as a native **Windows desktop app**.
+## Get TFLIX
 
-- Runs in its own window — no browser needed
-- Blocks the pop-ups and ad redirects (No Ads)
-- Always up to date — loads the live site, so new servers and fixes appear instantly
-- No setup — no API token to enter, just install and open
+### Website
 
-Download it from the [latest release](https://github.com/LckAndLove/tflix/releases/latest).
+Open [tflix.nunesnetwork.com](https://tflix.nunesnetwork.com/) in a browser. Website deployments are published through the GitHub Pages workflow.
 
-Already installed? Download the newest installer from that same page and run it to update — no uninstall needed. See [Updating](app/windows/README.md#update) for details.
+### Desktop
 
-See the [Windows app guide](app/windows/README.md) for more info.
+Download the installer for macOS, Windows, or Linux from the [latest GitHub release](https://github.com/LckAndLove/tflix/releases/latest). The desktop app is built with Tauri and loads the bundled web interface.
 
-<!-- ## Android App (Phone + Android TV)
+### Android
 
-TFLIX is also available as a native **Android app** — one APK that works on phones,
-tablets, and **Android TV** (it shows up in the TV launcher).
+Download the APK from the [latest GitHub release](https://github.com/LckAndLove/tflix/releases/latest) and install it on an Android phone, tablet, or Android TV device. See the [Android app guide](app/android/README.md) for installation and build details.
 
-- Runs in its own app — no browser needed
-- Blocks the pop-ups and ad redirects (No Ads)
-- Always up to date — loads the live site, so new servers and fixes appear instantly
-- Android TV ready — installs and launches from the Leanback launcher
+## Run locally
 
-Download the APK from the [latest release](https://github.com/LckAndLove/tflix/releases/latest)
-and sideload it (on TV: install via a file-manager app or `adb install`).
+Requirements: Node.js, Rust, and the platform dependencies required by Tauri 2. The web interface also needs a TMDB read access token. Set `TMDB_TOKEN` to use your own token; the UI preparation script can use the project's configured read token when the variable is not set.
 
-See the [Android app guide](app/android/README.md) for more info. -->
+```bash
+npm install
+npm run tauri dev
+```
 
-## Tech Stack
+Build a desktop bundle with:
 
-- HTML, CSS, JavaScript
-- [Electron](https://www.electronjs.org/) (Windows desktop app)
-- [Kotlin](https://kotlinlang.org/) (Android phone + TV app)
-- [TMDB API](https://developers.themoviedb.org/)
-- [GitHub Pages](https://pages.github.com/)
+```bash
+npm run tauri build
+```
+
+The Tauri configuration prepares the web interface in `ui/` before running or building the desktop app. Android build instructions are in [app/android/README.md](app/android/README.md).
+
+## Tech stack
+
+- HTML, CSS, and JavaScript for the web interface
+- [Tauri 2](https://tauri.app/) and Rust for the desktop application and player integration
+- Kotlin and Android WebView for the Android application
+- [TMDB API](https://developer.themoviedb.org/docs)
+- GitHub Actions for website deployment and desktop/Android release builds
+
+## Related project
+
+[TMDB-Player](https://github.com/TomasTNunes/TMDB-Player) is a browser extension for playing titles from the TMDB website.

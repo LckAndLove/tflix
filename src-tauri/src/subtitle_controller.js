@@ -7,12 +7,12 @@
   const transport=window.__TFLIX_SUBTITLES__;
   const zh=(navigator.language||'').startsWith('zh');
   const words=zh?{
-    title:'字幕',off:'关闭字幕',native:'片源内置',external:'外挂字幕',unknown:'版本未验证',loading:'正在加载字幕…',
-    ready:'字幕已加载 · 发行版本未验证',empty:'没有可选的完整字幕文件；视频画面可能已自带字幕',blocked:'已排除分盘字幕；不会自动拼接或平移。',
-    hint:'优先使用片源内置字幕。外挂须匹配当前发行版；画面内嵌的字幕无法关闭。',close:'关闭',error:'字幕加载失败，可重选其他文件。'
-  }:{title:'Subtitles',off:'Off',native:'Source track',external:'External subtitles',unknown:'Edition unverified',loading:'Loading subtitles…',
-    ready:'Loaded · video edition unverified',empty:'No complete subtitle files available. The video may have burned-in captions.',blocked:'Split-disc subtitles excluded; no automatic merging or shifting.',
-    hint:'Prefer source tracks. External files must match this edition. Burned-in captions cannot be disabled.',close:'Close',error:'Subtitle load failed. Choose another file.'};
+    title:'字幕',off:'关闭字幕',native:'片源内置',external:'外挂字幕',unknown:'版本未验证',loading:'正在查找字幕…',
+    ready:'字幕已开启',empty:'没有找到可用字幕',blocked:'已排除分盘字幕',
+    hint:'选择字幕轨道',close:'关闭',language:'字幕语言',error:'字幕加载失败，请重选。'
+  }:{title:'Subtitles',off:'Off',native:'Source',external:'External',unknown:'Edition unverified',loading:'Finding subtitles…',
+    ready:'Subtitles on',empty:'No subtitles found',blocked:'Split-disc subtitles excluded',
+    hint:'Choose a subtitle track',close:'Close',language:'Language',error:'Subtitle failed. Choose another.'};
   let video,controller,panel,caption,status,catalogStatus,list,languages,returnFocus,selectedTrack=null;
   let sourceSerial=0,lastSource='',catalogRequest=null,catalogSerial=0,activeState={state:'off'};
   let preferred;
@@ -24,7 +24,7 @@
     if(state.state==='off') {selectedTrack=null;render();}
     if(status) status.textContent=stateText();
   }});
-  function stateText() {return activeState.state==='loading'?words.loading:activeState.state==='ready'?(activeState.matchState==='source-track'?words.native:words.ready):activeState.state==='error'?`${words.error} ${activeState.message||''}`:words.hint;}
+  function stateText() {return activeState.state==='loading'?words.loading:activeState.state==='ready'?words.ready:activeState.state==='error'?words.error:words.hint;}
   function remember(language) {preferred=language;try{localStorage.setItem('tflix_subtitle_language',language);}catch{}}
   function render() {
     if(!caption) return;
@@ -91,13 +91,21 @@
     window.__TFLIX_SUBTITLE_STATE__=Object.freeze({...activeState});
   }
   function closePanel() {if(!panel)return;panel.hidden=true;returnFocus?.focus();}
+  function choice(label,id,selected,onChoose) {
+    const button=element('button',label,'tflix-subtitle-option');button.type='button';
+    button.setAttribute('aria-pressed',String(selected));
+    if(selected) button.dataset.selected='true';
+    button.onclick=onChoose;
+    return button;
+  }
   async function loadCatalog() {
     catalogRequest?.abort();catalogRequest=new AbortController();
     const ticket=++catalogSerial,signal=catalogRequest.signal;
     list.replaceChildren();status.textContent=stateText();catalogStatus.textContent=words.loading;
+    list.appendChild(choice(words.off,'off',!selectedTrack,()=>{session.stop();selectTrack(null);remember('off');closePanel();}));
     for(const track of nativeTracks()) {
-      const button=element('button',`${words.native} · ${track.label||track.language}`);
-      button.type='button';button.onclick=()=>{chooseNative(track);closePanel();};list.appendChild(button);
+      const button=choice(`${words.native} · ${track.label||track.language}`,track.label||track.language,selectedTrack===track,()=>{chooseNative(track);closePanel();});
+      list.appendChild(button);
     }
     try {
       const candidates=await transport.catalog(languages.value,signal);
@@ -107,8 +115,8 @@
       if(candidates.some(x=>x.excluded)) list.appendChild(element('p',words.blocked));
       for(const candidate of available) {
         const name=candidate.fileName||candidate.release||candidate.display||String(candidate.id);
-        const button=element('button',`${name}\n${candidate.matchState==='source-track'?words.native:words.unknown}`);button.type='button';
-        button.onclick=()=>{session.select(candidate);closePanel();};list.appendChild(button);
+        const button=choice(`${name}\n${candidate.matchState==='source-track'?words.native:words.unknown}`,candidate.id,activeState.state==='ready' && String(activeState.id)===String(candidate.id),()=>{session.select(candidate);closePanel();});
+        list.appendChild(button);
       }
     } catch(error) {if(!signal.aborted && ticket===catalogSerial) catalogStatus.textContent=words.error;}
   }
@@ -117,29 +125,38 @@
     const style=element('style');
     style.textContent=`
       .tflix-caption {position:absolute;left:5%;right:5%;bottom:var(--tflix-caption-bottom,3.5%);z-index:45;text-align:center;white-space:pre-line;pointer-events:none;color:white;font:600 clamp(16px,2vw,28px)/1.4 Arial,sans-serif;text-shadow:0 2px 3px black,0 0 5px black;}
-      .tflix-subtitle-panel {position:absolute;z-index:100;right:24px;bottom:100px;width:min(440px,calc(100% - 48px));height:auto!important;max-height:calc(100% - 130px);overflow:auto;background:#181818;color:#eee;border:1px solid #555;border-radius:5px;padding:20px;font:14px/1.6 Arial,sans-serif;pointer-events:auto;}
+      .tflix-subtitle-panel {box-sizing:border-box;position:absolute;z-index:100;right:20px;bottom:72px;width:min(320px,calc(100% - 32px));height:auto!important;max-height:calc(100% - 96px);overflow:hidden;background:rgba(24,24,24,.98);color:#eee;border:1px solid #444;border-radius:4px;padding:14px;font:14px/1.45 Arial,sans-serif;pointer-events:auto;box-shadow:0 8px 28px rgba(0,0,0,.55);}
       .tflix-subtitle-panel[hidden],.tflix-caption[hidden] {display:none!important;}
-      .tflix-subtitle-panel h2 {font-size:20px;margin:0 0 12px;}
-      .tflix-subtitle-panel button,.tflix-subtitle-panel select {display:block;width:100%;min-height:40px;padding:8px;margin:8px 0;background:#292929;border:1px solid #555;border-radius:3px;color:#eee;white-space:pre-line;text-align:left;font:inherit;cursor:pointer;}
-      .tflix-subtitle-panel button:focus-visible {outline:2px solid white;}
-      .tflix-subtitle-panel p {color:#bbb;font-size:12px;}
+      .tflix-subtitle-heading {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+      .tflix-subtitle-panel h2 {font-size:16px;font-weight:700;margin:0;}
+      .tflix-subtitle-panel .tflix-subtitle-close {width:30px;min-height:30px;padding:0;margin:0;border:0;background:transparent;text-align:center;font-size:22px;line-height:1;color:#bbb;}
+      .tflix-subtitle-language {display:flex;align-items:center;gap:10px;margin-bottom:8px;color:#bbb;font-size:12px;}
+      .tflix-subtitle-panel select {flex:1;min-width:0;min-height:34px;padding:5px 8px;margin:0;background:#292929;border:1px solid #555;border-radius:3px;color:#eee;font:inherit;cursor:pointer;}
+      .tflix-subtitle-status,.tflix-subtitle-catalog-status {margin:7px 0;color:#aaa;font-size:12px;}
+      .tflix-subtitle-options {max-height:min(260px,34vh);overflow-y:auto;scrollbar-width:none;}
+      .tflix-subtitle-options::-webkit-scrollbar {display:none;}
+      .tflix-subtitle-panel .tflix-subtitle-option {box-sizing:border-box;display:block;width:100%;min-height:38px;padding:8px 10px;margin:2px 0;background:transparent;border:0;border-radius:3px;color:#eee;white-space:pre-line;text-align:left;font:inherit;cursor:pointer;}
+      .tflix-subtitle-panel .tflix-subtitle-option:hover,.tflix-subtitle-panel .tflix-subtitle-option[data-selected="true"] {background:#333;}
+      .tflix-subtitle-panel .tflix-subtitle-option[data-selected="true"] {box-shadow:inset 3px 0 #e50914;font-weight:600;}
+      .tflix-subtitle-panel button:focus-visible,.tflix-subtitle-panel select:focus-visible {outline:2px solid white;outline-offset:1px;}
+      .tflix-subtitle-panel p {color:#aaa;font-size:11px;}
       media-controller div[noautohide][style*="--subtitle-overlay-bottom"] {display:none!important;}
     `;
     controller.appendChild(style);
     caption=element('div','','tflix-caption');caption.hidden=true;controller.appendChild(caption);
     panel=element('section','','tflix-subtitle-panel');panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label',words.title);
-    panel.appendChild(element('h2',words.title));
-    const close=element('button',words.close);close.type='button';close.onclick=closePanel;panel.appendChild(close);
-    const off=element('button',words.off);off.type='button';off.onclick=()=>{session.stop();selectTrack(null);remember('off');closePanel();};panel.appendChild(off);
+    const heading=element('div','','tflix-subtitle-heading');heading.appendChild(element('h2',words.title));
+    const close=element('button','×','tflix-subtitle-close');close.type='button';close.setAttribute('aria-label',words.close);close.onclick=closePanel;heading.appendChild(close);panel.appendChild(heading);
+    const languageRow=element('label','','tflix-subtitle-language');languageRow.appendChild(element('span',words.language));
     languages=element('select');languages.setAttribute('aria-label',zh?'字幕语言':'Subtitle language');
     for(const [code,name] of [['zh','中文'],['en','English'],['ja','日本語'],['ko','한국어'],['fr','Français'],['es','Español'],['de','Deutsch'],['ar','العربية'],['pt','Português'],['ru','Русский']]) {
       const option=element('option',name);option.value=code;languages.appendChild(option);
     }
     languages.value=preferred==='off'?'en':preferred;if(!languages.value)languages.value='en';
-    languages.onchange=()=>{session.stop();selectTrack(null);loadCatalog();};panel.appendChild(languages);
-    status=element('p',stateText());status.setAttribute('role','status');panel.appendChild(status);
-    catalogStatus=element('p');panel.appendChild(catalogStatus);
-    list=element('div');panel.appendChild(list);controller.appendChild(panel);
+    languages.onchange=()=>{session.stop();selectTrack(null);loadCatalog();};languageRow.appendChild(languages);panel.appendChild(languageRow);
+    status=element('p',stateText(),'tflix-subtitle-status');status.setAttribute('role','status');panel.appendChild(status);
+    catalogStatus=element('p','','tflix-subtitle-catalog-status');panel.appendChild(catalogStatus);
+    list=element('div','','tflix-subtitle-options');panel.appendChild(list);controller.appendChild(panel);
     panel.addEventListener('keydown',event=>{
       event.stopPropagation();
       if(event.key==='Escape'){event.preventDefault();closePanel();return;}
@@ -186,7 +203,7 @@
     const button=event.target.closest?.('button[aria-label="Subtitle settings"]');
     if(!button) return;
     event.preventDefault();event.stopImmediatePropagation();scan();if(!panel)return;
-    returnFocus=button;panel.hidden=false;loadCatalog();panel.querySelector('button').focus();
+    returnFocus=button;panel.hidden=false;loadCatalog();panel.querySelector('.tflix-subtitle-close').focus();
   },true);
   new MutationObserver(scan).observe(document,{childList:true,subtree:true});
   scan();

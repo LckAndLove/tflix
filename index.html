@@ -574,8 +574,23 @@
       margin-bottom: 0;
       display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .field-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
-    .modal-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem; }
+    .field-label { display:block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+    #episode-select { display:none; }
+    #modal-selection-status:empty { display:none; }
+    .modal-episodes { padding:0 2rem 1.5rem; }
+    .modal-episodes[hidden] { display:none!important; }
+    .modal-episodes-head { display:flex; align-items:center; gap:0.8rem; margin-bottom:0.75rem; }
+    .modal-episodes h3 { margin:0; font-size:1.1rem; font-weight:700; }
+    .modal-episodes-season { width:min(190px,55%); }
+    .modal-episodes-season .field-label { display:none; }
+    .modal-episodes-season .modal-select { padding-top:0.5rem; padding-bottom:0.5rem; font-size:0.84rem; }
+    .modal-episode-list { display:grid; gap:0.45rem; }
+    .modal-episode-row { display:grid; grid-template-columns:42px minmax(0,1fr); gap:0.8rem; align-items:center; width:100%; padding:0.85rem 1rem; border:1px solid transparent; border-radius:6px; background:rgba(255,255,255,0.055); color:var(--text); text-align:left; cursor:pointer; transition:background .15s,border-color .15s; }
+    .modal-episode-row:hover { background:rgba(255,255,255,0.11); }
+    .modal-episode-row[aria-current="true"] { background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.32); }
+    .modal-episode-number { color:var(--muted); font-size:1.15rem; font-weight:700; text-align:center; }
+    .modal-episode-title { display:block; font-size:0.92rem; font-weight:650; }
+    .modal-episode-date { display:block; margin-top:0.2rem; color:var(--muted); font-size:0.76rem; }
     .modal-select {
       width: 100%; padding: 0.7rem 2.4rem 0.7rem 0.95rem;
       background: var(--card); border: 1px solid var(--line); border-radius: 8px;
@@ -647,7 +662,7 @@
       .modal-body { padding: 1.2rem 1.3rem 1.5rem; }
       .modal-footer { padding: 0.85rem 1.3rem 1.1rem; }
       .modal-hero-content { padding: 1.2rem 1.3rem; }
-      .modal-selectors { grid-template-columns: 1fr; }
+      .modal-episodes { padding:0 1.3rem 1.3rem; }
     }
 
     /* ─── UPDATE MODAL ─── */
@@ -821,20 +836,21 @@
         <div id="modal-digital-release" class="dr-loading"></div>
         <div id="modal-overview" class="modal-overview"></div>
       </div>
+      <section id="modal-episodes" class="modal-episodes" hidden aria-labelledby="modal-episodes-title">
+        <div class="modal-episodes-head">
+          <h3 id="modal-episodes-title"></h3>
+          <div class="modal-episodes-season">
+            <label class="field-label" for="season-select">Season</label>
+            <select id="season-select" class="modal-select"></select>
+          </div>
+        </div>
+        <div id="modal-episode-list" class="modal-episode-list"></div>
+      </section>
     </div>
     <div class="modal-footer">
       <div id="tv-selectors" style="display:none">
         <p id="modal-selection-status" role="status"></p><button id="modal-retry" type="button" hidden></button>
-        <div class="modal-selectors">
-          <div>
-            <label class="field-label" for="season-select">Season</label>
-            <select id="season-select" class="modal-select"></select>
-          </div>
-          <div>
-            <label class="field-label" for="episode-select">Episode</label>
-            <select id="episode-select" class="modal-select"></select>
-          </div>
-        </div>
+        <select id="episode-select" aria-hidden="true" tabindex="-1"></select>
       </div>
       <button class="btn btn-primary modal-watch-btn" id="modal-watch-btn">
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1219,9 +1235,8 @@ function applyTranslations() {
   if (emptyP) emptyP.textContent = t('noTitlesDesc');
 
   // Modal field labels
-  const labels = document.querySelectorAll('#tv-selectors .field-label');
-  if (labels[0]) labels[0].textContent = t('season');
-  if (labels[1]) labels[1].textContent = t('episode');
+  const seasonLabel = document.querySelector('#modal-episodes .field-label');
+  if (seasonLabel) seasonLabel.textContent = t('season');
   const watchBtn = $('modal-watch-btn');
   if (watchBtn) {
     watchBtn.innerHTML = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> ${t('play')}`;
@@ -1650,15 +1665,16 @@ async function loadContinueWatching() {
 async function applyWatchedEpisode(saved,ticket=modalRequest) {
   if(!saved || ticket!==modalRequest)return;
   const select=$('episode-select'),options=Array.from(select.options);
-  if(!saved.completed){if(options.some(x=>x.value===String(saved.episode)))select.value=String(saved.episode);return;}
+  if(!saved.completed){if(options.some(x=>x.value===String(saved.episode)))select.value=String(saved.episode);if(typeof refreshModalEpisodeSelection==='function')refreshModalEpisodeSelection();return;}
   const data=seasonCache[`${currentLang}-${saved.id}-${saved.season}`];
   const today=new Date().toISOString().slice(0,10);
   const aired=ep=>typeof ep.air_date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(ep.air_date) && ep.air_date<=today;
   const next=data?.episodes?.find(ep=>ep.episode_number>saved.episode && aired(ep));
-  if(next){select.value=String(next.episode_number);return;}
+  if(next){select.value=String(next.episode_number);if(typeof refreshModalEpisodeSelection==='function')refreshModalEpisodeSelection();return;}
   const details=tvDetails[`${currentLang}-${saved.id}`],season=details?.seasons?.find(x=>x.season_number>saved.season && x.episode_count>0 && typeof x.air_date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(x.air_date) && x.air_date<=today);
   if(season){$('season-select').value=String(season.season_number);await updateEpisodes(Number(saved.id),ticket);}
   else if(options.some(x=>x.value===String(saved.episode)))select.value=String(saved.episode);
+  if(typeof refreshModalEpisodeSelection==='function')refreshModalEpisodeSelection();
 }
 async function restoreWatchedSelection() {
   const item=currentModalItem;if(!item || item.media_type!=='tv')return;
@@ -1695,6 +1711,8 @@ async function openModal(item) {
   const m       = matchPct(item.vote_average);
 
   currentModalItem = { ...item, media_type: type };
+  if($('modal-episodes'))$('modal-episodes').hidden = isMovie;
+  $('modal-episode-list')?.replaceChildren();
 
   const bg = backdrop(item.backdrop_path) || poster(item.poster_path, 'w780');
   $('modal-backdrop-img').style.backgroundImage = bg ? `url('${bg}')` : 'none';
@@ -1725,6 +1743,7 @@ async function openModal(item) {
     fetchDigitalReleaseBadge(item.id);
   } else {
     tvSel.style.display = 'block';
+    if($('modal-episodes-title'))$('modal-episodes-title').textContent = t('episode') === '集' ? '剧集' : 'Episodes';
     drEl.style.display = 'none';
     loadTvSeasons(item.id,ticket);
   }
@@ -1841,6 +1860,7 @@ async function updateEpisodes(tvId,ticket=modalRequest) {
   $('modal-selection-status').textContent=t('loading');
   const epSel = $('episode-select');
   epSel.innerHTML = `<option>${t('loading')}</option>`;
+  renderModalEpisodes([]);
 
   const cacheKey = `${currentLang}-${tvId}-${seasonNum}`;
   try {
@@ -1857,6 +1877,7 @@ async function updateEpisodes(tvId,ticket=modalRequest) {
         return `<option value="${ep.episode_number}">${epPrefix}${epTitle}${dateStr}</option>`;
       }).join('');
     } else { throw new Error('no episodes'); }
+    renderModalEpisodes(episodes);
     $('modal-watch-btn').disabled=false;
     $('modal-selection-status').textContent='';
     $('modal-retry').hidden=true;
@@ -1866,6 +1887,33 @@ async function updateEpisodes(tvId,ticket=modalRequest) {
     $('modal-selection-status').textContent=t('selectionFailed');
     $('modal-retry').hidden=false;
   }
+}
+
+function renderModalEpisodes(episodes) {
+  const section=$('modal-episodes'),list=$('modal-episode-list'),select=$('episode-select');
+  if(!section || !list || !select) return;
+  section.hidden=!currentModalItem || currentModalItem.media_type!=='tv' || !episodes.length;
+  list.replaceChildren();
+  for(const episode of episodes) {
+    const row=document.createElement('button');row.type='button';row.className='modal-episode-row';
+    row.setAttribute('aria-current',String(select.value===String(episode.episode_number)));
+    const number=document.createElement('span');number.className='modal-episode-number';number.textContent=String(episode.episode_number);
+    const content=document.createElement('span');
+    const title=document.createElement('span');title.className='modal-episode-title';
+    title.textContent=episode.name || (currentLang==='zh'?`第 ${episode.episode_number} 集`:`Episode ${episode.episode_number}`);
+    const date=document.createElement('span');date.className='modal-episode-date';date.textContent=fmtDate(episode.air_date);
+    content.append(title);if(date.textContent)content.append(date);
+    if(episode.overview) {const summary=document.createElement('span');summary.className='modal-episode-date';summary.textContent=episode.overview;content.append(summary);}
+    row.append(number,content);
+    row.addEventListener('click',()=>{select.value=String(episode.episode_number);renderModalEpisodes(episodes);});
+    list.appendChild(row);
+  }
+}
+
+function refreshModalEpisodeSelection() {
+  const item=currentModalItem;if(!item || item.media_type!=='tv')return;
+  const data=seasonCache[`${currentLang}-${item.id}-${$('season-select').value}`];
+  if(data?.episodes)renderModalEpisodes(data.episodes);
 }
 
 $('modal-retry').addEventListener('click',()=>{if(currentModalItem)loadTvSeasons(currentModalItem.id);});
@@ -2234,8 +2282,13 @@ document.addEventListener('keydown',event=>{
     // Modal open → trap focus inside it
     if ($('modal-backdrop').classList.contains('open')) {
       const s = [{ key: null, items: [$('modal-close')] }];
-      if ($('tv-selectors').style.display !== 'none')
-        s.push({ key: null, items: [$('season-select'), $('episode-select')] });
+      if ($('tv-selectors').style.display !== 'none') {
+        const season=$('season-select');
+        if(vis(season))s.push({ key: null, items: [season] });
+        document.querySelectorAll('#modal-episode-list .modal-episode-row').forEach(item=>{
+          if(vis(item))s.push({ key: null, items: [item] });
+        });
+      }
       s.push({ key: null, items: [$('modal-watch-btn')] });
       return s;
     }
