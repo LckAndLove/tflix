@@ -104,12 +104,20 @@ pub fn run() {
                 "window.__TFLIX_PLAYER_ORIGIN__ = {};",
                 serde_json::to_string(&player_origin)?
             );
-            let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+            let window_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("TFLIX")
                 .inner_size(1400.0, 880.0)
                 .min_inner_size(940.0, 600.0)
                 .center()
-                .resizable(true)
+                .resizable(true);
+            #[cfg(target_os = "macos")]
+            let window_builder = window_builder
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .initialization_script(
+                    "document.addEventListener('DOMContentLoaded', () => document.documentElement.classList.add('tflix-macos-window'), { once: true });",
+                );
+            let _window = window_builder
                 .initialization_script(&player_script)
                 .initialization_script(INIT_SCRIPT)
                 .initialization_script_for_all_frames(INTERACTION_GUARD_SCRIPT)
