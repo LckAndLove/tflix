@@ -32,5 +32,17 @@ test('native media seek accepts only the app top frame and compatible duration',
 
 test('old episode progress is ignored while an internal provider selection is loading',()=>{
  const p=progress();p.state.episode=2;p.send('tflix:media-progress',30,120,false,{mediaType:'tv',mediaId:'12',season:1,episode:1});assert.equal(p.values.size,0);
- p.send('tflix:media-progress',20,120,false,{mediaType:'tv',mediaId:'12',season:1,episode:2});assert.equal(p.values.size,1);
+ p.send('tflix:media-progress',20,120,false,{mediaType:'tv',mediaId:'12',season:1,episode:2});assert.equal(JSON.parse(p.values.get('tflix_progress_v1'))['tv:12:1:2:4'].time,20);
+});
+
+test('reused provider windows resume each new episode independently',()=>{
+ const p=progress();p.send('tflix:media-progress',35);p.state.episode=2;p.send('tflix:media-progress',45);
+ p.state.episode=1;p.send('tflix:media-ready',0);p.state.episode=2;p.send('tflix:media-ready',0);p.send('tflix:media-ready',0);
+ assert.deepEqual(p.sent.map(x=>x.time),[35,45]);
+});
+test('series history stores the actual latest episode and completion independently of resume positions',()=>{
+ const p=progress();p.state.episode=3;p.send('tflix:media-progress',45);
+ let saved=JSON.parse(p.values.get('tflix_history_v1'))['tv:12'];assert.equal(saved.episode,3);assert.equal(saved.completed,false);
+ p.send('tflix:media-progress',119,120,true);saved=JSON.parse(p.values.get('tflix_history_v1'))['tv:12'];assert.equal(saved.completed,true);
+ assert.equal(Object.keys(JSON.parse(p.values.get('tflix_progress_v1'))).length,0);
 });

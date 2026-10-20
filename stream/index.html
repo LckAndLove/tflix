@@ -838,7 +838,7 @@ window.addEventListener('message',async event=>{
 /* ─── WATCH PROGRESS ─── */
 // Resume only the same provider and matching media duration. Never persist URLs
 // or carry one episode's position into another episode or provider edition.
-const resumedFrames=new WeakSet();
+const resumedFrames=new WeakMap();
 function progressKey(){return [state.type,state.id,state.season||0,state.episode||0,state.server].join(':');}
 function readProgress(){try{const data=JSON.parse(localStorage.getItem('tflix_progress_v1')||'{}');if(!data||typeof data!=='object'||Array.isArray(data))return {};return Object.fromEntries(Object.entries(data).filter(([,v])=>v&&Number.isFinite(v.time)&&Number.isFinite(v.duration)&&Number.isFinite(v.updatedAt)));}catch{return {};}}
 window.addEventListener('message',event=>{
@@ -849,8 +849,8 @@ window.addEventListener('message',event=>{
   if(!Number.isFinite(duration)||duration<60) return;
   const key=progressKey(),entries=readProgress();
   if(type==='tflix:media-ready') {
-    if(resumedFrames.has(event.source)) return;
-    resumedFrames.add(event.source);
+    if(resumedFrames.get(event.source)===key) return;
+    resumedFrames.set(event.source,key);
     const saved=entries[key];
     if(saved && Date.now()-saved.updatedAt<30*86400000 && Math.abs(saved.duration-duration)<=2 && saved.time>=5 && saved.time<duration-15) {
       event.source.postMessage({type:'tflix:resume',time:saved.time,duration},'*');
@@ -859,7 +859,14 @@ window.addEventListener('message',event=>{
   }
   if(type==='tflix:media-resumed') {toast(currentLang==='zh'?'已继续上次观看':'Resumed from your last position');return;}
   if(!Number.isFinite(currentTime)||currentTime<5||currentTime>duration) return;
-  if(ended || duration-currentTime<15) delete entries[key];
+  const completed=!!ended || duration-currentTime<15;
+  try {
+    const history=JSON.parse(localStorage.getItem('tflix_history_v1')||'{}');
+    const records=history && typeof history==='object' && !Array.isArray(history)?history:{};
+    records[`${state.type}:${state.id}`]={type:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,server:state.server,title:state.title||'',time:currentTime,duration,completed,updatedAt:Date.now()};
+    localStorage.setItem('tflix_history_v1',JSON.stringify(Object.fromEntries(Object.entries(records).sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0,100))));
+  } catch {}
+  if(completed) delete entries[key];
   else entries[key]={time:currentTime,duration,updatedAt:Date.now()};
   const recent=Object.entries(entries).sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0,100);
   try{localStorage.setItem('tflix_progress_v1',JSON.stringify(Object.fromEntries(recent)));}catch{}
@@ -955,8 +962,13 @@ document.addEventListener('keydown',e=>{
 /* ─── NAV ─── */
 $('logo').addEventListener('click', () => { location.href = '../index.html'; });
 $('back-btn').addEventListener('click', () => {
-  if (history.length > 1) history.back();
-  else location.href = '../index.html';
+  // Subframe navigation adds joint history entries. history.back() can change
+  // only the inner episode while leaving the app's title and state untouched.
+  try {
+    const previous=JSON.parse(sessionStorage.getItem('tflix_return_v1')||'{}');
+    sessionStorage.setItem('tflix_return_v1',JSON.stringify({...previous,id:state.id,type:state.type,selection:{id:String(state.id),season:state.season||1,episode:state.episode||1,completed:false}}));
+  }catch{}
+  location.replace('../index.html?return=1');
 });
 
 /* ─── INIT ─── */

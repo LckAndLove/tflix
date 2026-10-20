@@ -579,6 +579,7 @@
       flex-shrink: 0; padding: 0.85rem 2rem 1.2rem;
       border-top: 1px solid var(--line); background: var(--bg-elev);
     }
+    .watch-history-info {padding:8px;color:var(--muted);font-size:12px;}
     .modal-watch-btn { width: 100%; padding: 0.95rem; font-size: 1.02rem; }
 
     /* ─────────────── TOAST ─────────────── */
@@ -1218,6 +1219,7 @@ async function changeLanguage(newLang) {
 
   // Reload rows
   $('rows-container').innerHTML = '';
+  loadContinueWatching();
   loadTop10();
   for (const cfg of CATEGORY_ROWS) loadRow(cfg);
 
@@ -1335,7 +1337,7 @@ function makeCard(item, { drDate = null } = {}) {
   const showDrBadge = drDate && new Date(drDate) <= new Date();
 
   const card = document.createElement('div');
-  card.className = 'card';
+  card.className = 'card';card.dataset.mediaId=String(item.id);card.dataset.mediaType=type;
   card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label',title);
   card.addEventListener('keydown',event=>{if(!document.documentElement.classList.contains('keynav') && ['Enter',' '].includes(event.key)){event.preventDefault();card.click();}});
   card.innerHTML = `
@@ -1604,6 +1606,77 @@ async function loadGenres() {
   } catch {}
 }
 
+/* ─── WATCH HISTORY ─── */
+function watchHistory() {
+  try {let records=JSON.parse(localStorage.getItem('tflix_history_v1')||'{}');
+    // Import existing per-source positions without discarding newer history.
+    let legacy={};try{legacy=JSON.parse(localStorage.getItem('tflix_progress_v1')||'{}');}catch{}
+    if(records && typeof records==='object' && !Array.isArray(records) && legacy && typeof legacy==='object')for(const [key,value] of Object.entries(legacy)){
+      const [type,id,season,episode,server]=key.split(':');if(!value || !['tv','movie'].includes(type) || !/^\d+$/.test(id))continue;
+      const itemKey=`${type}:${id}`;if(!records[itemKey] || records[itemKey].updatedAt<value.updatedAt)records[itemKey]={...value,type,id,season:Number(season)||1,episode:Number(episode)||1,server:Number(server),completed:false};
+    }
+    if(!records || typeof records!=='object' || Array.isArray(records))return [];
+    return Object.values(records).filter(x=>x && ['movie','tv'].includes(x.type) && /^\d+$/.test(String(x.id)) && Number.isFinite(x.updatedAt) && Number.isFinite(x.time) && Number.isFinite(x.duration) && x.duration>0 && x.time>=0 && x.time<=x.duration && Number.isInteger(x.season) && x.season>0 && Number.isInteger(x.episode) && x.episode>0 && Date.now()-x.updatedAt<30*86400000).sort((a,b)=>b.updatedAt-a.updatedAt);
+  } catch {return [];}
+}
+function lastWatched(item) {return watchHistory().find(x=>x.type===mediaOf(item) && String(x.id)===String(item.id));}
+let continueRequest=0;
+async function loadContinueWatching() {
+  const ticket=++continueRequest,lang=currentLang;
+  document.getElementById('continue-row')?.remove();
+  const records=watchHistory().filter(x=>!x.completed || x.type==='tv').slice(0,20);
+  if(!records.length)return;
+  const scroller=buildRow({title:lang==='zh'?'继续观看':'Continue watching'}),row=scroller.closest('.row');
+  row.id='continue-row';$('rows-container').prepend(row);scroller.replaceChildren();
+  const cards=await Promise.all(records.map(async record=>{
+    try {
+      const item={...await tmdb(`/${record.type}/${record.id}`),media_type:record.type};
+      const card=makeCard(item),label=record.type==='tv'?(lang==='zh'?`第 ${record.season} 季 · 第 ${record.episode} 集`:`S${record.season} · E${record.episode}`):'';
+      const info=document.createElement('div');info.className='watch-history-info';
+      const remaining=Math.ceil((record.duration-record.time)/60);
+      info.textContent=[label,record.completed?(lang==='zh'?'本集已看完 · 查看后续':'Episode finished · View episodes'):(lang==='zh'?`剩余 ${remaining} 分钟`:`${remaining} min left`)].filter(Boolean).join(' · ');
+      const meter=document.createElement('progress');meter.max=record.duration;meter.value=record.time;meter.setAttribute('aria-label',lang==='zh'?'观看进度':'Watch progress');meter.style.cssText='width:100%;height:4px;accent-color:#e50914;display:block';
+      card.append(meter,info);return card;
+    }catch{return null;}
+  }));
+  if(ticket!==continueRequest || lang!==currentLang){row.remove();return;}
+  scroller.replaceChildren(...cards.filter(Boolean));if(!scroller.children.length)row.remove();
+}
+async function applyWatchedEpisode(saved,ticket=modalRequest) {
+  if(!saved || ticket!==modalRequest)return;
+  const select=$('episode-select'),options=Array.from(select.options);
+  if(!saved.completed){if(options.some(x=>x.value===String(saved.episode)))select.value=String(saved.episode);return;}
+  const data=seasonCache[`${currentLang}-${saved.id}-${saved.season}`];
+  const aired=ep=>!ep.air_date || ep.air_date<=new Date().toISOString().slice(0,10);
+  const next=data?.episodes?.find(ep=>ep.episode_number>saved.episode && aired(ep));
+  if(next){select.value=String(next.episode_number);return;}
+  const details=tvDetails[`${currentLang}-${saved.id}`],season=details?.seasons?.find(x=>x.season_number>saved.season && x.episode_count>0 && x.air_date && x.air_date<=new Date().toISOString().slice(0,10));
+  if(season){$('season-select').value=String(season.season_number);await updateEpisodes(Number(saved.id),ticket);}
+  else if(options.some(x=>x.value===String(saved.episode)))select.value=String(saved.episode);
+}
+async function restoreWatchedSelection() {
+  const item=currentModalItem;if(!item || item.media_type!=='tv')return;
+  const saved=lastWatched(item);if(!saved)return;
+  const ticket=modalRequest,sel=$('season-select');
+  if(!Array.from(sel.options).some(x=>x.value===String(saved.season)))return;
+  sel.value=String(saved.season);await updateEpisodes(item.id,ticket);
+  if(ticket!==modalRequest)return;
+  await applyWatchedEpisode(saved,ticket);
+}
+window.addEventListener('pageshow',()=>{
+  loadContinueWatching();
+  if(currentModalItem && $('modal-backdrop').classList.contains('open'))restoreWatchedSelection();
+});
+async function restorePlayerReturn() {
+  if(new URLSearchParams(location.search).get('return')!=='1')return;
+  history.replaceState(null,'',location.pathname);
+  let saved;try{saved=JSON.parse(sessionStorage.getItem('tflix_return_v1')||'null');}catch{}
+  if(!saved || !['movie','tv'].includes(saved.type) || !/^\d+$/.test(String(saved.id)))return;
+  if(saved.query){searchInput.value=saved.query;clearBtn.classList.add('visible');await doSearch(saved.query);currentFilter=['all','movie','tv'].includes(saved.filter)?saved.filter:'all';renderSearchResults();document.querySelectorAll('.filter-tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.filter===currentFilter));}
+  try{const item=await tmdb(`/${saved.type}/${saved.id}`);openModal({...item,media_type:saved.type,_returnSelection:saved.selection,_fromPlayer:true});}catch{toast(currentLang==='zh'?'详情加载失败，可从继续观看重试':'Could not restore details. Retry from Continue watching.');}
+}
+/* ─── END WATCH HISTORY ─── */
+
 /* ─── MODAL ─── */
 let modalRequest=0, episodesRequest=0, modalReturnFocus=null;
 async function openModal(item) {
@@ -1656,7 +1729,8 @@ async function openModal(item) {
 
   // Give the modal its own history entry so the system/remote Back button
   // (phone gesture, TV remote, browser) closes it instead of leaving the page.
-  if (!(history.state && history.state.tflixModal)) history.pushState({ tflixModal: true }, '');
+  if(item._fromPlayer)history.replaceState({tflixModal:true,tflixReturned:true},'');
+  else if (!(history.state && history.state.tflixModal)) history.pushState({ tflixModal: true }, '');
   if (window.__knavModalOpened) window.__knavModalOpened();
 
   // Open scrolled to the title (just above "FILM // Title"); if it all fits, this stays at the top.
@@ -1729,8 +1803,11 @@ async function loadTvSeasons(id,ticket=modalRequest) {
 
     seasonSel.replaceWith(seasonSel.cloneNode(true));
     const freshSel = $('season-select');
-    freshSel.addEventListener('change', () => updateEpisodes(id));
+    freshSel.addEventListener('change', () => {delete currentModalItem._returnSelection;updateEpisodes(id);});
+    const saved=currentModalItem._returnSelection||lastWatched(currentModalItem);
+    if(saved && Array.from(freshSel.options).some(x=>x.value===String(saved.season)))freshSel.value=String(saved.season);
     await updateEpisodes(id,ticket);
+    if(current() && saved)await applyWatchedEpisode(saved,ticket);
   } catch {
     if(!current()) return;
     $('modal-selection-status').textContent=t('selectionFailed');
@@ -1791,7 +1868,11 @@ $('modal-watch-btn').addEventListener('click', () => {
   clearTimeout(searchTimer);
   const s = parseInt($('season-select')?.value  || 1);
   const e = parseInt($('episode-select')?.value || 1);
-  window.location.href = playerUrl(currentModalItem, s, e);
+  try{sessionStorage.setItem('tflix_return_v1',JSON.stringify({id:currentModalItem.id,type:currentModalItem.media_type,query:activeSearchQuery,filter:currentFilter}));}catch{}
+  const saved=lastWatched(currentModalItem);
+  const url=new URL(playerUrl(currentModalItem,s,e),location.href);
+  if(saved && !saved.completed && (currentModalItem.media_type==='movie' || saved.season===s && saved.episode===e) && [1,2,4,6].includes(saved.server))url.searchParams.set('server',saved.server);
+  window.location.href=url.href;
 });
 
 $('modal-close').addEventListener('click', closeModal);
@@ -1804,12 +1885,15 @@ function closeModal(fromPop) {
   syncModalIsolation();
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
+  const closedItem=currentModalItem;
   currentModalItem = null;modalRequest++;episodesRequest++;
-  modalReturnFocus?.focus?.({preventScroll:true});
+  const returnTarget=modalReturnFocus?.isConnected?modalReturnFocus:Array.from(document.querySelectorAll('.card')).find(card=>card.dataset.mediaId===String(closedItem?.id) && card.dataset.mediaType===closedItem?.media_type);
+  (returnTarget||$('search'))?.focus?.({preventScroll:true});
   if (window.__knavModalClosed) window.__knavModalClosed();
   // Closing by any means other than Back itself unwinds the modal's
   // history entry, so the next Back doesn't have to be pressed twice.
-  if (fromPop !== true && history.state && history.state.tflixModal) history.back();
+  if(fromPop!==true && history.state?.tflixReturned)history.replaceState(null,'',location.pathname);
+  else if (fromPop !== true && history.state && history.state.tflixModal) history.back();
 }
 
 window.addEventListener('popstate', () => {
@@ -2094,6 +2178,8 @@ document.addEventListener('keydown',event=>{
 (async function init() {
   applyTranslations();
   loadGenres();
+  loadContinueWatching();
+  restorePlayerReturn();
   await loadHero();
   loadTop10();
   for (const cfg of CATEGORY_ROWS) loadRow(cfg);

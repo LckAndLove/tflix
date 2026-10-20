@@ -8,11 +8,11 @@
   const zh=(navigator.language||'').startsWith('zh');
   const words=zh?{
     title:'字幕',off:'关闭字幕',native:'片源内置',external:'外挂字幕',unknown:'版本未验证',loading:'正在加载字幕…',
-    ready:'字幕已加载 · 发行版本未验证',empty:'没有可用的完整版本字幕',blocked:'已排除分盘字幕；不会自动拼接或平移。',
-    hint:'外挂字幕需与当前视频发行版一致；选中后按文件原始时间播放。',close:'关闭',error:'字幕加载失败，可重选其他文件。'
+    ready:'字幕已加载 · 发行版本未验证',empty:'没有可选的完整字幕文件；视频画面可能已自带字幕',blocked:'已排除分盘字幕；不会自动拼接或平移。',
+    hint:'优先使用片源内置字幕。外挂须匹配当前发行版；画面内嵌的字幕无法关闭。',close:'关闭',error:'字幕加载失败，可重选其他文件。'
   }:{title:'Subtitles',off:'Off',native:'Source track',external:'External subtitles',unknown:'Edition unverified',loading:'Loading subtitles…',
-    ready:'Loaded · video edition unverified',empty:'No complete-edition subtitles available',blocked:'Split-disc subtitles excluded; no automatic merging or shifting.',
-    hint:'External subtitles must match this video edition. Original timestamps are preserved.',close:'Close',error:'Subtitle load failed. Choose another file.'};
+    ready:'Loaded · video edition unverified',empty:'No complete subtitle files available. The video may have burned-in captions.',blocked:'Split-disc subtitles excluded; no automatic merging or shifting.',
+    hint:'Prefer source tracks. External files must match this edition. Burned-in captions cannot be disabled.',close:'Close',error:'Subtitle load failed. Choose another file.'};
   let video,controller,panel,caption,status,catalogStatus,list,languages,returnFocus,selectedTrack=null;
   let sourceSerial=0,lastSource='',catalogRequest=null,catalogSerial=0,activeState={state:'off'};
   let preferred;
@@ -28,8 +28,10 @@
   function remember(language) {preferred=language;try{localStorage.setItem('tflix_subtitle_language',language);}catch{}}
   function render() {
     if(!caption) return;
-    const cues=selectedTrack?.activeCues;
-    caption.textContent=cues ? Array.from(cues,cue=>cue.getCueAsHTML?.().textContent||cue.text).join('\n') : '';
+    // During an HLS seek WebKit may retain the previous activeCues until
+    // decoded media catches up. Never display that old line at the new time.
+    const cues=video && !video.seeking && video.readyState>=2 ? selectedTrack?.activeCues : null;
+    caption.textContent=cues ? Array.from(cues).filter(cue=>cue.startTime<=video.currentTime && video.currentTime<cue.endTime).map(cue=>cue.getCueAsHTML?.().textContent||cue.text).join('\n') : '';
     caption.hidden=!caption.textContent;
   }
   function selectTrack(track) {
@@ -82,6 +84,7 @@
     return Array.from(video.textTracks).filter(t=>['subtitles','captions'].includes(t.kind) && !external.has(t));
   }
   function chooseNative(track) {
+    if(selectedTrack)selectedTrack.removeEventListener('cuechange',render);
     session.stop();selectTrack(track);track.addEventListener('cuechange',render);
     if(status) status.textContent=words.native;remember(track.language||'en');
     activeState={state:'ready',matchState:'source-track',sourceKey:`source-${sourceSerial}`};
@@ -104,7 +107,7 @@
       if(candidates.some(x=>x.excluded)) list.appendChild(element('p',words.blocked));
       for(const candidate of available) {
         const name=candidate.fileName||candidate.release||candidate.display||String(candidate.id);
-        const button=element('button',`${name}\n${words.unknown}`);button.type='button';
+        const button=element('button',`${name}\n${candidate.matchState==='source-track'?words.native:words.unknown}`);button.type='button';
         button.onclick=()=>{session.select(candidate);closePanel();};list.appendChild(button);
       }
     } catch(error) {if(!signal.aborted && ticket===catalogSerial) catalogStatus.textContent=words.error;}
@@ -156,7 +159,7 @@
     lastSource=source;sourceSerial++;
     catalogSerial++;catalogRequest?.abort();session.reset(`source-${sourceSerial}`);
     selectTrack(null);if(panel)panel.hidden=true;
-    if(preferred!=='off') {const native=nativeTracks().find(t=>t.language===preferred);if(native)chooseNative(native);}
+    if(preferred!=='off') {const native=nativeTracks().find(t=>(t.language||'').toLowerCase().split(/[-_]/)[0]===preferred.toLowerCase().split(/[-_]/)[0]);if(native)chooseNative(native);}
   }
   function scan() {
     const next=document.querySelector('media-controller'),media=next?.querySelector('video');
@@ -166,12 +169,13 @@
       controller=next;video=media;lastSource='';
       if(video) {
         const owner=video;
+        for(const event of ['seeking','seeked','timeupdate'])video.addEventListener(event,()=>{if(video===owner)render();});
         video.addEventListener('loadedmetadata',()=>{if(video===owner)sourceChanged();});
         video.addEventListener('emptied',()=>{if(video===owner){lastSource='';catalogSerial++;catalogRequest?.abort();session.reset(`source-${++sourceSerial}`);selectTrack(null);if(panel)panel.hidden=true;}});
         video.textTracks.addEventListener('change',()=>{if(video===owner && selectedTrack) selectTrack(selectedTrack);});
         video.textTracks.addEventListener('addtrack',()=>{
           if(video!==owner || preferred==='off' || activeState.state!=='off' || selectedTrack) return;
-          const native=nativeTracks().find(t=>t.language===preferred);
+          const native=nativeTracks().find(t=>(t.language||'').toLowerCase().split(/[-_]/)[0]===preferred.toLowerCase().split(/[-_]/)[0]);
           if(native) chooseNative(native);
         });
       }

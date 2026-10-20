@@ -3,9 +3,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const {webcrypto}=require('node:crypto');
 const ass='[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.25,0:00:04.50,Default,,0,0,0,,{\\i1}Hello, world\\NSecond line';
-function install(fetch){
+function install(fetch,video={currentSrc:"https://media.example/edition-a.m3u8"}){
  const window={fetch};
- vm.runInNewContext(fs.readFileSync('src-tauri/src/subtitle_compat.js','utf8'),{window,location:{hostname:'cinesrc.st',origin:'https://cinesrc.st',href:'https://cinesrc.st/embed/tv/123542?s=1&e=1',pathname:'/embed/tv/123542',search:'?s=1&e=1'},URL,URLSearchParams,Response,TextEncoder,Uint8Array,crypto:webcrypto});
+ vm.runInNewContext(fs.readFileSync('src-tauri/src/subtitle_compat.js','utf8'),{window,document:{querySelector:()=>video},location:{hostname:'cinesrc.st',origin:'https://cinesrc.st',href:'https://cinesrc.st/embed/tv/123542?s=1&e=1',pathname:'/embed/tv/123542',search:'?s=1&e=1'},URL,URLSearchParams,Response,TextEncoder,Uint8Array,crypto:webcrypto});
  return {window,api:window.__TFLIX_SUBTITLES__};
 }
 test('ASS conversion preserves original time values and dialogue commas',()=>{
@@ -39,9 +39,9 @@ test('catalog retains split metadata and does not treat likely as verified sync'
  const items=await api.catalog('en');assert.equal(items[0].excluded,true);assert.equal(items[1].matchState,'unverified');
  assert.match(request,/id=123542&season=1&episode=1&language=en/);
 });
-test('remote automatic catalog excludes external files while preserving source tracks',async()=>{
+test('remote subtitle renderer cannot restore a saved offset for locally owned files',async()=>{
  const {window}=install(async()=>Response.json({subtitles:[{id:'source',source:'builtin'},{id:'unknown',source:'external'}],upstreamStatus:'ok'}));
- const data=await(await window.fetch('/api/subtitles/search')).json();assert.equal(data.subtitles.length,1);assert.equal(data.subtitles[0].id,'source');
+ const data=await(await window.fetch('/api/subtitles/search')).json();assert.equal(data.subtitles.length,0);
 });
 test('unrelated video requests are left unchanged',async()=>{
  const response=new Response('playlist');const {window}=install(async()=>response);
@@ -53,4 +53,29 @@ test('empty language catalogs are distinguished from service failures',async()=>
  assert.equal((await empty.api.catalog('zh')).length,0);
  const failed=install(async()=>Response.json({message:'Database error'},{status:500}));
  await assert.rejects(failed.api.catalog('zh'),/Subtitle catalog: 500/);
+});
+
+test('bundled subtitles bypass unrelated external files and are bound to the actual source',async()=>{
+ const video={currentSrc:'https://media.example/edition-a.m3u8'};
+ const {window,api}=install(async url=>url==='/api/subtitles/search'?Response.json({subtitles:[]}):String(url).includes('/search')?Response.json([]):new Response(ass),video);
+ await window.fetch('/api/subtitles/search',{body:JSON.stringify({tmdbId:123542,season:1,episode:1,builtInSubtitles:[{url:'https://media.example/subtitles/zh.ass',language:'zh-CN',display:'Chinese'}]})});
+ const items=await api.catalog('zh');assert.equal(items.length,1);assert.equal(items[0].matchState,'source-track');
+ const file=await api.download(items[0]);assert.equal(file.matchState,'source-track');assert.match(file.text,/00:00:01.250/);
+ video.currentSrc='https://media.example/edition-b.m3u8';assert.equal((await api.catalog('zh')).length,0);await assert.rejects(api.download(items[0]),/source changed/);
+});
+test('segmented HLS WebVTT is never treated as a standalone subtitle file',()=>{
+ const {api}=install(()=>{});assert.equal(api.normalize('WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:900000\n\n00:00:01.000 --> 00:00:02.000\nHello'),null);
+});
+test('a pre-media bundled directory binds once and never follows a second source',async()=>{
+ const video={currentSrc:''};const {window,api}=install(async url=>url==='/api/subtitles/search'?Response.json({subtitles:[]}):Response.json([]),video);
+ await window.fetch('/api/subtitles/search',{body:JSON.stringify({tmdbId:123542,season:1,episode:1,builtInSubtitles:[{url:'https://media.example/zh.srt',language:'zh'}]})});
+ video.currentSrc='https://media.example/first.m3u8';assert.equal((await api.catalog('zh')).length,1);
+ video.currentSrc='https://media.example/second.m3u8';assert.equal((await api.catalog('zh')).length,0);
+});
+test('a late directory request from another episode cannot replace the current directory',async()=>{
+ const {window,api}=install(async url=>url==='/api/subtitles/search'?Response.json({subtitles:[]}):Response.json([]));
+ const payload={tmdbId:123542,season:1,episode:1,builtInSubtitles:[{url:'https://media.example/right.srt',language:'zh'}]};
+ await window.fetch('/api/subtitles/search',{body:JSON.stringify(payload)});
+ await window.fetch('/api/subtitles/search',{body:JSON.stringify({...payload,episode:2,builtInSubtitles:[{url:'https://media.example/wrong.srt',language:'zh'}]})});
+ assert.equal((await api.catalog('zh'))[0].url,'https://media.example/right.srt');
 });

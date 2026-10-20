@@ -4,9 +4,14 @@
   'use strict';
   if (location.hostname !== 'cinesrc.st' || window.__TFLIX_SUBTITLES__) return;
   const originalFetch = window.fetch.bind(window);
+  let sourceCatalog={key:'',items:[]};
+  const mediaKey=()=>`${location.pathname}${location.search}|${document.querySelector?.('video')?.currentSrc||''}`;
+  const languageKey=value=>String(value||'').toLowerCase().split(/[-_]/)[0];
   const hosts = new Set(['subs.bright67.online', 'sub.wyzie.io']);
   function normalize(input) {
     const text = input.replace(/^\uFEFF/, '').trim();
+    // Segmented HLS subtitles need PTS mapping; never parse them as a whole-film file.
+    if (/X-TIMESTAMP-MAP\s*=/i.test(text)) return null;
     if (text.startsWith('WEBVTT')) return /\d{2}:\d{2}(?::\d{2})?\.\d{3}\s+-->/.test(text) ? text : null;
     const events = text.indexOf('[Events]');
     if (events >= 0) {
@@ -52,18 +57,27 @@
     url.searchParams.set('id',match[2]);
     if(match[1]==='tv') {url.searchParams.set('season',params.get('s')||'1');url.searchParams.set('episode',params.get('e')||'1');}
     if(language) url.searchParams.set('language',language);
-    const response=await originalFetch(url.href,{signal,credentials:'omit'});
+    // A directory captured before the very first media URL can bind once to
+    // that video's first loaded source, never to a subsequent source switch.
+    if(sourceCatalog.key===`${location.pathname}${location.search}|` && document.querySelector?.('video')?.currentSrc)sourceCatalog.key=mediaKey();
+    const builtins=sourceCatalog.key===mediaKey()?sourceCatalog.items.filter(x=>!language || languageKey(x.language)===languageKey(language)):[];
+    if(builtins.length)return builtins;
+    let response;
+    try {response=await originalFetch(url.href,{signal,credentials:'omit'});}catch(error){if(signal?.aborted || !builtins.length)throw error;return builtins;}
+
     const data=await response.json();
     // This API uses HTTP 400 for an empty language catalog, not only bad input.
-    if(response.status===400 && data?.message==='No subtitles found') return [];
-    if(!response.ok) throw Error(`Subtitle catalog: ${response.status}`);
+    if(response.status===400 && data?.message==='No subtitles found') return builtins;
+    if(!response.ok) {if(builtins.length)return builtins;throw Error(`Subtitle catalog: ${response.status}`);}
     if(!Array.isArray(data)) throw Error('Invalid subtitle catalog');
     // Keep all metadata: an IMDb match or upstream "likely" is NOT sync proof.
-    return data.map(x=>({...x,excluded:isSplit(x),matchState:'unverified'}));
+    return [...builtins,...data.map(x=>({...x,excluded:isSplit(x),matchState:'unverified'}))];
   }
   async function download(candidate,signal) {
     if(isSplit(candidate)) throw Error('Split-disc subtitle cannot be used with a complete video');
-    const urls=[candidate.r2Url,candidate.url].filter(Boolean).map(safeUrl);
+    const sourceTrack=candidate.matchState==='source-track' && sourceCatalog.key===mediaKey() && sourceCatalog.items.some(x=>x.id===candidate.id && x.url===candidate.url);
+    if(candidate.matchState==='source-track' && !sourceTrack)throw Error('Video source changed; reopen subtitles');
+    const urls=sourceTrack?[candidate.url]:[candidate.r2Url,candidate.url].filter(Boolean).map(safeUrl);
     for(const url of new Set(urls)) {
       try {
         const response=await originalFetch(url,{signal,credentials:'omit'});
@@ -71,7 +85,7 @@
         if(text) {
           const bytes=new TextEncoder().encode(text);
           const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
-          return {text,hash,id:String(candidate.id),matchState:'unverified'};
+          return {text,hash,id:String(candidate.id),matchState:sourceTrack?'source-track':'unverified'};
         }
       } catch(error) {if(signal?.aborted) throw error;}
     }
@@ -80,12 +94,25 @@
   window.__TFLIX_SUBTITLES__={normalize,isSplit,catalog,download};
   window.fetch=async function(input,init) {
     const url=new URL(typeof input==='string'||input instanceof URL ? input : input.url,location.href);
+    const isSearch=url.origin===location.origin && url.pathname==='/api/subtitles/search';
+    let builtins=[];
+    if(isSearch)try{const payload=JSON.parse(init?.body||'{}');
+      const match=location.pathname.match(/^\/embed\/(tv|movie)\/(\d+)/),params=new URLSearchParams(location.search);
+      if(!match || String(payload.tmdbId)!==match[2] || match[1]==='tv' && (Number(payload.season)!==Number(params.get('s')||1) || Number(payload.episode)!==Number(params.get('e')||1)))throw Error('Stale subtitle catalog');
+        builtins=(Array.isArray(payload.builtInSubtitles)?payload.builtInSubtitles:[]).flatMap((item,index)=>{
+          try{const address=new URL(item.url);if(address.protocol!=='https:' || address.username || address.password)return [];
+            return [{...item,id:`source-${index}`,fileName:item.display||item.label||item.language||'Source track',url:address.href,matchState:'source-track',excluded:false}];
+          }catch{return [];}
+        });
+      sourceCatalog={key:mediaKey(),items:builtins};
+    }catch{}
     const response=await originalFetch(input,init);
     // The local controller owns external subtitle selection. Prevent the remote
-    // player from auto-restoring an unrelated external file in the background.
+    // player from restoring files or applying its own saved timing offset. Source
+    // bundled tracks are offered by the same local controller instead.
     if(url.origin===location.origin && url.pathname==='/api/subtitles/search' && response.ok) {
       const data=await response.clone().json();
-      if(Array.isArray(data.subtitles)) return new Response(JSON.stringify({...data,subtitles:data.subtitles.filter(x=>x.source==='builtin')}),{status:200,headers:{'Content-Type':'application/json'}});
+      if(Array.isArray(data.subtitles)) return new Response(JSON.stringify({...data,subtitles:[]}),{status:200,headers:{'Content-Type':'application/json'}});
     }
     if(hosts.has(url.hostname) && url.pathname==='/search' && response.ok) return new Response('[]',{status:200,headers:{'Content-Type':'application/json'}});
     return response;
