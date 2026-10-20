@@ -10,6 +10,8 @@ const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 const INIT_SCRIPT: &str = include_str!("init.js");
 const PLAYER_COMPAT_SCRIPT: &str = include_str!("player_compat.js");
 const SUBTITLE_LAYOUT_SCRIPT: &str = include_str!("subtitle_layout.js");
+const SUBTITLE_SESSION_SCRIPT: &str = include_str!("subtitle_session.js");
+const SUBTITLE_CONTROLLER_SCRIPT: &str = include_str!("subtitle_controller.js");
 const SUBTITLE_COMPAT_SCRIPT: &str = include_str!("subtitle_compat.js");
 const PLAYER_MONITOR_SCRIPT: &str = include_str!("player_monitor.js");
 
@@ -110,6 +112,8 @@ pub fn run() {
                 .initialization_script(INIT_SCRIPT)
                 .initialization_script_for_all_frames(PLAYER_COMPAT_SCRIPT)
                 .initialization_script_for_all_frames(SUBTITLE_COMPAT_SCRIPT)
+                .initialization_script_for_all_frames(SUBTITLE_SESSION_SCRIPT)
+                .initialization_script_for_all_frames(SUBTITLE_CONTROLLER_SCRIPT)
                 .initialization_script_for_all_frames(SUBTITLE_LAYOUT_SCRIPT)
                 .initialization_script_for_all_frames(PLAYER_MONITOR_SCRIPT)
                 .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
