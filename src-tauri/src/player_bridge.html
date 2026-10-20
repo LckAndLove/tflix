@@ -14,8 +14,8 @@ try {
   if (config.requireReferer) frame.referrerPolicy = 'origin';
   frame.allowFullscreen = true;
   frame.allow = 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *';
-  // Xayah and Naafiri reject a sandboxed ancestor. Keep the other providers
-  // isolated, while allowing those two explicit source IDs to load normally.
+  // Providers that reject a sandboxed ancestor are loaded without sandboxing,
+  // as declared by the shared source adapter.
   if (config.sandboxEnabled) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
   // The media monitor runs inside the provider's frame and reports to its
   // immediate parent. Forward only its typed readiness/progress signals to

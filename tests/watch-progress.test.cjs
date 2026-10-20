@@ -1,7 +1,7 @@
 const {test}=require('node:test');const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function progress(current=true){
  const values=new Map(),sent=[],source={postMessage:x=>sent.push(x)},state={type:'tv',id:'12',season:1,episode:1,server:4};let receive;
- const context={state,currentLang:'zh',window:{addEventListener:(type,fn)=>receive=fn},localStorage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},isCurrentPlayerFrame:()=>current,toast(){}};
+ const context={state,currentLang:'zh',pendingSourceSeek:null,sourceTimeParameterApplied:false,window:{addEventListener:(type,fn)=>receive=fn},localStorage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},isCurrentPlayerFrame:()=>current,toast(){}};
  vm.createContext(context);const html=fs.readFileSync('stream/index.html','utf8'),start=html.indexOf('/* ─── WATCH PROGRESS');vm.runInContext(html.slice(start,html.indexOf('/* ─── END WATCH PROGRESS',start)),context);
  return{state,sent,values,send:(type,time=30,duration=120,ended=false,identity={})=>receive({source,data:{type,currentTime:time,duration,ended,...identity}})};
 }

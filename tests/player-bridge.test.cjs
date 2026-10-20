@@ -11,10 +11,12 @@ test('episode selections relay only from the exact current CineSrc frame and ori
 });
 
 test('providers that reject sandboxing receive an unsandboxed bridge frame',()=>{
- const attributes=[];const frame={setAttribute:(name,value)=>attributes.push([name,value]),contentWindow:{}};
- const context={URL,URLSearchParams,location:{search:'?source=3&src='+encodeURIComponent('https://vidsrc.sh/embed/movie?tmdb=1')},document:{createElement:()=>frame,body:{appendChild(){}}},window:{TFLIX_SOURCE_CONFIG:sourceConfig,addEventListener(){},top:{postMessage(){}}}};
- vm.runInNewContext(bridgeScript(),context);
- assert.equal(attributes.some(([name])=>name==='sandbox'),false);
+ for(const [id,host] of [[3,'vidsrc.sh'],[5,'vidfast.vc'],[6,'vidlink.pro']]){
+  const attributes=[];const frame={setAttribute:(name,value)=>attributes.push([name,value]),contentWindow:{}};
+  const context={URL,URLSearchParams,location:{search:`?source=${id}&src=`+encodeURIComponent(`https://${host}/movie/1`)},document:{createElement:()=>frame,body:{appendChild(){}}},window:{TFLIX_SOURCE_CONFIG:sourceConfig,addEventListener(){},top:{postMessage(){}}}};
+  vm.runInNewContext(bridgeScript(),context);
+  assert.equal(attributes.some(([name])=>name==='sandbox'),false,`source ${id}`);
+ }
 });
 
 test('bridge forwards real media readiness and resume commands',()=>{

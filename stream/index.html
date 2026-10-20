@@ -321,6 +321,9 @@ let sourceRecoveryTimer = null;
 let sourceLoadStartedAt = 0;
 let sourceAttemptReadyRecorded = false;
 let sourceAttemptFailureRecorded = false;
+let latestMediaProgress = null;
+let pendingSourceSeek = null;
+let sourceTimeParameterApplied = false;
 
 /* ─── PARAMS ─── */
 function readParams() {
@@ -393,6 +396,10 @@ function syncUrl() {
 
 function sourceUrlFor(server, probe = false) {
   const url = new URL(serverUrlResolvers[server].buildUrl(state.type,state.id,state.season||1,state.episode||1), location.href);
+  if(!probe && pendingSourceSeek?.fromServer!==server && Number.isFinite(pendingSourceSeek?.time)) {
+    const parameter=serverUrlResolvers[server].startTimeParam;
+    if(parameter) {url.searchParams.set(parameter,String(Math.floor(pendingSourceSeek.time)));sourceTimeParameterApplied=true;}
+  }
   if (probe) {
     for (const key of ['autoplay','autoPlay']) if (url.searchParams.has(key)) url.searchParams.set(key, 'false');
     url.searchParams.set('tflix_probe', '1');
@@ -523,6 +530,7 @@ function loadPlayer(continueAutoTry = false) {
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
   $('playback-failure').hidden = true;
+  sourceTimeParameterApplied=false;
   const src = sourceUrlFor(state.server);
   const loader = $('player-loading');
   loader.classList.remove('hide');
@@ -615,6 +623,8 @@ function updateServerCards() {
 function tryNextSource() {
   if (!state || playerMediaDetected || !autoTryEnabled) return;
   clearTimeout(sourceCheckTimer);
+  if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))
+    pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};
   recordSourceFailure(state.server);
   sourceStatuses[state.server] = 'failed';
   let next=null;
@@ -744,6 +754,8 @@ function buildServers() {
       localStorage.setItem(MANUAL_SOURCE_KEY,'1');
       localStorage.setItem(STORAGE_KEY,String(s.id));
       autoTryEnabled = false;
+      if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))
+        pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};
       state.server = s.id;
       rememberCurrentEpisodeServer();
       document.querySelectorAll('.server-card').forEach(c => c.classList.toggle('selected', c === el));
@@ -1034,8 +1046,16 @@ window.addEventListener('message',event=>{
   if(!Number.isFinite(duration)||duration<60) return;
   const key=progressKey(),entries=readProgress();
   if(type==='tflix:media-ready') {
+    if(Number.isFinite(currentTime))latestMediaProgress={currentTime,duration,server:state.server,updatedAt:Date.now()};
     if(resumedFrames.get(event.source)===key) return;
     resumedFrames.set(event.source,key);
+    if(pendingSourceSeek) {
+      const transfer=pendingSourceSeek;pendingSourceSeek=null;
+      if(transfer.fromServer!==state.server && transfer.time>=5 && transfer.time<duration-15) {
+        if(!sourceTimeParameterApplied) event.source.postMessage({type:'tflix:resume',time:transfer.time,duration},'*');
+        return;
+      }
+    }
     const saved=entries[key];
     if(saved && Date.now()-saved.updatedAt<30*86400000 && Math.abs(saved.duration-duration)<=2 && saved.time>=5 && saved.time<duration-15) {
       event.source.postMessage({type:'tflix:resume',time:saved.time,duration},'*');
@@ -1044,6 +1064,7 @@ window.addEventListener('message',event=>{
   }
   if(type==='tflix:media-resumed') {toast(currentLang==='zh'?'已继续上次观看':'Resumed from your last position');return;}
   if(!Number.isFinite(currentTime)||currentTime<5||currentTime>duration) return;
+  latestMediaProgress={currentTime,duration,server:state.server,updatedAt:Date.now()};
   const completed=!!ended || duration-currentTime<15;
   try {
     const history=JSON.parse(localStorage.getItem('tflix_history_v1')||'{}');
