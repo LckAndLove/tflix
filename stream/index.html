@@ -93,7 +93,7 @@
     .fatal { display:grid; place-content:center; height:100%; text-align:center; gap:16px; padding:24px; color:#aaa; }
     .fatal h2 { color:#fff; font-size:24px; }
     .fatal a { color:#fff; text-decoration:underline; }
-    .controls-col[data-panel="sources"] { width:min(200px,calc(100% - 24px)); }
+    .controls-col[data-panel="sources"] { position:fixed; width:min(200px,calc(100% - 24px)); }
     .controls-col[data-panel="sources"] .drawer-header { display:none; }
     .controls-col[data-panel="sources"] .drawer-header h2 { font-size:14px; }
     .controls-col[data-panel="sources"] .drawer-close { padding:4px 0 4px 8px; font-size:11px; }
@@ -895,6 +895,23 @@ window.addEventListener('message',event=>{
 
 /* Watch settings float above the video; opening them never reloads it. */
 let drawerTrigger = null;
+function positionSourcePicker() {
+  const drawer=$('watch-drawer');
+  if(drawer.dataset.panel!=='sources') {
+    for(const property of ['top','right','max-height']) drawer.style.removeProperty(property);
+    return;
+  }
+  if(drawer.hidden)return;
+  const button=$('sources-btn').getBoundingClientRect();
+  const viewport=document.documentElement;
+  const width=drawer.getBoundingClientRect().width;
+  const top=button.bottom+6;
+  const right=Math.min(Math.max(12,viewport.clientWidth-button.right),Math.max(12,viewport.clientWidth-width-12));
+  drawer.style.top=`${top}px`;
+  drawer.style.right=`${right}px`;
+  drawer.style.maxHeight=`${Math.max(0,viewport.clientHeight-top-12)}px`;
+}
+window.addEventListener('resize',positionSourcePicker);
 function closeWatchDrawer() {
   $('watch-drawer').hidden = true;
   revealWatchControls();
@@ -910,6 +927,7 @@ function openWatchDrawer(panel) {
   drawerTrigger = trigger;
   drawer.dataset.panel = panel;
   drawer.hidden = false;
+  positionSourcePicker();
   $('drawer-scrim').hidden = false;
   $('drawer-title').textContent = t(panel === 'episodes' ? 'episodes' : 'sources');
   for (const id of ['episodes-btn','sources-btn']) $(id).setAttribute('aria-expanded',String($(id) === trigger));
