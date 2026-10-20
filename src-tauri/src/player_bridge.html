@@ -17,6 +17,25 @@ try {
   // Xayah and Naafiri reject a sandboxed ancestor. Keep the other providers
   // isolated, while allowing those two explicit source IDs to load normally.
   if (sourceId !== 3 && sourceId !== 5) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+  // The media monitor runs inside the provider's frame and reports to its
+  // immediate parent. Forward only its typed readiness/progress signals to
+  // the app so both the visible player and hidden source probes can observe
+  // the real media state.
+  const mediaTypes = new Set([
+    'tflix:media-ready', 'tflix:media-playing', 'tflix:media-paused',
+    'tflix:media-error', 'tflix:media-progress', 'tflix:media-resumed',
+    'tflix:embed-blocked', 'tflix:interaction'
+  ]);
+  window.addEventListener('message', event => {
+    if (event.source !== frame.contentWindow || event.origin !== source.origin || !mediaTypes.has(event.data?.type)) return;
+    window.top.postMessage(event.data, '*');
+  });
+  // Resume commands originate in the app and must cross this bridge to the
+  // provider frame where player_monitor can seek the matching video.
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent || event.data?.type !== 'tflix:resume') return;
+    frame.contentWindow.postMessage(event.data, '*');
+  });
   // The provider posts episode changes to its immediate wrapper. Forward only
   // this exact provider frame's validated selection, never arbitrary messages.
   window.addEventListener('message',event=>{

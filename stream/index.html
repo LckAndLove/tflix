@@ -50,6 +50,8 @@
     #player:fullscreen,#player:-webkit-full-screen { position:fixed; width:100vw; height:100vh; }
     .player-loading { position:absolute; inset:0; display:grid; place-items:center; background:#000; z-index:1; pointer-events:none; transition:opacity .4s; }
     .player-loading.hide { opacity:0; }
+    #source-probes { position:absolute; left:-10000px; top:-10000px; width:1px; height:1px; overflow:hidden; pointer-events:none; opacity:0; }
+    #source-probes iframe { width:1px; height:1px; border:0; }
     .spinner { width:38px; height:38px; border:3px solid #333; border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .drawer-scrim { position:fixed; inset:60px 0 0; z-index:55; background:#0003; border:0; cursor:default; }
@@ -129,6 +131,7 @@
         <div class="player-loading" id="player-loading"><div class="spinner"></div></div>
         <div class="playback-failure" id="playback-failure" role="status" hidden><h2 id="failure-title"></h2><p id="failure-copy"></p><button class="failure-action" id="failure-action" type="button"></button></div>
         <iframe id="player" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
+        <div id="source-probes" aria-hidden="true"></div>
       </div>
     </div>
 
@@ -297,6 +300,7 @@ const UNSANDBOXED_SOURCES = new Set([3,5]);
 const AUTO_SOURCE_ORDER = [4, 6, 1, 2, 3, 5];
 const SOURCE_CHECK_TIMEOUT_MS = 90000;
 const SOURCE_RECOVERY_TIMEOUT_MS = 12000;
+const SOURCE_PROBE_TIMEOUT_MS = 30000;
 
 /* ─── STATE ─── */
 const $ = id => document.getElementById(id);
@@ -313,6 +317,9 @@ let tvData = null;         // /tv/{id} details
 let episodeRequest=0,languageRequest=0;
 const seasonCache = {};    // cached season episode lists
 let sourceStatuses = {};
+let probeStatuses = {};
+let probeSerial = 0;
+const probeFrames = new Map();
 let sourceSequence = [];
 let sourceSequenceIndex = 0;
 let sourceCheckTimer = null;
@@ -350,20 +357,93 @@ function syncUrl() {
   history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
 }
 
+function sourceUrlFor(server, probe = false) {
+  const url = new URL(serverUrlResolvers[server]({...state,server}), location.href);
+  if (probe) {
+    for (const key of ['autoplay','autoPlay']) if (url.searchParams.has(key)) url.searchParams.set(key, 'false');
+    url.searchParams.set('tflix_probe', '1');
+  }
+  return url.href;
+}
+
+function clearSourceProbes() {
+  for (const probe of probeFrames.values()) {
+    clearTimeout(probe.timer);
+    probe.frame.remove();
+  }
+  probeFrames.clear();
+}
+
+function finishSourceProbe(id, status, ticket) {
+  const probe = probeFrames.get(id);
+  if (!probe || probe.ticket !== ticket || ticket !== probeSerial) return;
+  clearTimeout(probe.timer);
+  probe.frame.remove();
+  probeFrames.delete(id);
+  probeStatuses[id] = status;
+  updateServerCards();
+}
+
+// Load every provider in an off-screen bridge and wait for the injected media
+// monitor to report real metadata/canplay/playing. A successful HTTP response
+// alone is not useful here: many providers return an embed refusal or a player
+// shell with no playable media. These frames never become the visible player,
+// and are removed as soon as their result is known.
+function probeAllSources() {
+  const ticket = ++probeSerial;
+  clearSourceProbes();
+  probeStatuses = Object.fromEntries(SERVERS.map(server => [server.id, 'checking']));
+  updateServerCards();
+  const bridgeOrigin = window.__TFLIX_PLAYER_ORIGIN__;
+  if (!bridgeOrigin) {
+    // The browser build cannot inspect cross-origin video readiness. Keep the
+    // cards honest instead of presenting a network reachability guess.
+    probeStatuses = {};
+    updateServerCards();
+    return;
+  }
+  const container = $('source-probes');
+  for (const server of SERVERS) {
+    const frame = document.createElement('iframe');
+    frame.referrerPolicy = 'origin';
+    frame.allowFullscreen = true;
+    // Probes may load metadata but must never receive autoplay permission;
+    // only the one visible player gets an audio/playback pipeline.
+    frame.setAttribute('allow', "autoplay 'none'; encrypted-media *; picture-in-picture *; fullscreen *; web-share *");
+    if (!UNSANDBOXED_SOURCES.has(server.id)) frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+    const src = sourceUrlFor(server.id, true);
+    frame.src = `${bridgeOrigin}?src=${encodeURIComponent(src)}&source=${server.id}&probe=1`;
+    const probe = { id: server.id, frame, ticket, timer: null };
+    probe.timer = setTimeout(() => finishSourceProbe(server.id, 'failed', ticket), SOURCE_PROBE_TIMEOUT_MS);
+    probeFrames.set(server.id, probe);
+    container.appendChild(frame);
+  }
+}
+
+window.addEventListener('message', event => {
+  const type = event.data?.type;
+  if (!['tflix:media-ready', 'tflix:media-playing', 'tflix:media-error', 'tflix:embed-blocked'].includes(type)) return;
+  for (const probe of probeFrames.values()) {
+    if (event.source !== probe.frame.contentWindow) continue;
+    finishSourceProbe(probe.id, type === 'tflix:media-ready' || type === 'tflix:media-playing' ? 'available' : 'failed', probe.ticket);
+    break;
+  }
+});
+
 /* ─── PLAYER ─── */
 function loadPlayer(continueAutoTry = false) {
   resetWatchPlaybackState();
   clearTimeout(sourceRecoveryTimer);
   sourceRecoveryTimer = null;
   $('playback-failure').hidden = true;
-  const src = serverUrlResolvers[state.server](state);
+  const src = sourceUrlFor(state.server);
   const loader = $('player-loading');
   loader.classList.remove('hide');
 
   if (!continueAutoTry) {
     clearTimeout(sourceCheckTimer);
     const contentKey=[state.type,state.id,state.season||0,state.episode||0].join(':');
-    if(state._sourceStatusKey!==contentKey){sourceStatuses={};state._sourceStatusKey=contentKey;}
+    if(state._sourceStatusKey!==contentKey){sourceStatuses={};probeStatuses={};state._sourceStatusKey=contentKey;probeAllSources();}
     sourceSequence = [state.server, ...AUTO_SOURCE_ORDER.filter(id => id !== state.server)];
     sourceSequenceIndex = 0;
     playerMediaDetected = false;
@@ -432,7 +512,7 @@ function updateSourceStatus(status, message) {
 function updateServerCards() {
   document.querySelectorAll('.server-card').forEach(card => {
     const id = Number(card.dataset.id);
-    const status = sourceStatuses[id] || 'unknown';
+    const status = sourceStatuses[id] || probeStatuses[id] || 'unknown';
     card.dataset.status = status;
     const label = card.querySelector('.s-state');
     if (!label) return;
