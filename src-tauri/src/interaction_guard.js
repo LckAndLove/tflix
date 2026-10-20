@@ -6,9 +6,11 @@
   window.__TFLIX_INTERACTION_GUARD__ = true;
 
   const installStyle = () => {
-    const root = document.head || document.documentElement;
+    const root = document.head;
     if (!root) return false;
+    if (root.querySelector('[data-tflix-interaction-guard]')) return true;
     const style = document.createElement('style');
+    style.dataset.tflixInteractionGuard = 'true';
     style.textContent = `
       html, html *, html *::before, html *::after {
         -webkit-user-select: none !important;
@@ -24,7 +26,11 @@
     root.appendChild(style);
     return true;
   };
-  if (!installStyle()) document.addEventListener('DOMContentLoaded', installStyle, {once:true});
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installStyle, {once:true});
+  } else {
+    installStyle();
+  }
 
   document.addEventListener('contextmenu', event => {
     event.preventDefault();
