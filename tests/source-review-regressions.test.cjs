@@ -7,7 +7,7 @@ const config=fs.readFileSync('stream/source-config.js','utf8');
 const stream=fs.readFileSync('stream/index.html','utf8');
 function context(saved={}) {
   const values=new Map(Object.entries(saved));
-  const c={navigator:{language:'en-US'},localStorage:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,String(v))}};
+  const c={document:{addEventListener(){}},navigator:{language:'en-US'},localStorage:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,String(v))}};
   c.window=c;vm.createContext(c);vm.runInContext(config,c);return c;
 }
 test('prepared desktop and Android homepages include their shared dependency and initialize',()=>{
@@ -20,9 +20,9 @@ test('prepared desktop and Android homepages include their shared dependency and
     vm.runInContext(script.slice(0,script.indexOf('let currentFilter')),c);
   }
 });
-test('stored defaults are preserved without migration or automatic-source flags',()=>{
+test('manual defaults after Ekko migration are preserved without automatic-source flags',()=>{
   for(const id of [1,2,4,6]) {
-    const c=context({tflix_server:String(id),tflix_manual_source_v1:'0'});
+    const c=context({tflix_server:String(id),tflix_ekko_default_v1:'1',tflix_manual_source_v1:'0'});
     const script=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
     vm.runInContext(script.slice(0,script.indexOf('let currentFilter')),c);
     assert.equal(vm.runInContext('currentServer',c),id);

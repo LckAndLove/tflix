@@ -64,3 +64,29 @@ test('TV details open immediately while season metadata is still pending',async(
  const request=context.openModal({id:12,name:'TV',media_type:'tv'});
  assert.ok(classes.has('open'));assert.equal(els['modal-watch-btn'].disabled,true);await request;gate.resolve();
 });
+
+test('watch: an empty season is not reported as a network failure',async()=>{
+ const s=episodes(true),request=s.context.populateEpisodes(true,5);
+ s.pending.get('/tv/12/season/5').resolve({episodes:[]});await request;
+ assert.equal(s.context.state.season,1);assert.equal(s.context.state.episode,1);
+ assert.equal(s.els['episode-retry'].hidden,true);
+ assert.equal(s.els['episode-select'].disabled,true);
+ assert.match(s.els['episode-status'].textContent,/暂无/);
+});
+test('watch: failed season switch preserves the playing season and episode',async()=>{
+ const s=episodes(true);s.context.state.episode=3;
+ const request=s.context.populateEpisodes(true,2);
+ assert.equal(s.context.state.season,1);
+ s.pending.get('/tv/12/season/2').reject(Error('network'));await request;
+ assert.equal(s.context.state.season,1);assert.equal(s.context.state.episode,3);
+ assert.equal(s.els['episode-retry'].hidden,false);
+});
+test('watch: successful season switch commits only after episodes load',async()=>{
+ const s=episodes(true);s.context.state.episode=3;
+ s.els['episode-select'].options=[{value:'2'},{value:'3'}];
+ const request=s.context.populateEpisodes(true,2);
+ assert.equal(s.context.state.season,1);
+ s.pending.get('/tv/12/season/2').resolve({episodes:[{episode_number:2,name:'Episode'}]});
+ assert.equal(await request,true);assert.equal(s.context.state.season,2);
+ assert.equal(s.context.state.episode,2);
+});

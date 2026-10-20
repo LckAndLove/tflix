@@ -37,12 +37,14 @@
     }
 
     html {
+      scrollbar-width: none;
       scroll-behavior: smooth;
       overflow-x: hidden;
       overscroll-behavior-x: none;
     }
 
     body {
+      scrollbar-width: none;
       -webkit-user-select: none;
       user-select: none;
       background: var(--bg);
@@ -59,6 +61,8 @@
       -webkit-user-select: text;
       user-select: text;
     }
+
+    html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
     ::selection { background: var(--accent); color: #fff; }
 
@@ -1754,7 +1758,7 @@ async function loadTvSeasons(id,ticket=modalRequest) {
     let details = tvDetails[key];
     if (!details) { details = await tmdb(`/tv/${id}`); tvDetails[key] = details; }
     if(!current()) return;
-    const seasons = (details.seasons || []).filter(s => s.season_number > 0);
+    const seasons = (details.seasons || []).filter(s => s.season_number > 0 && s.episode_count > 0);
     const sWord = t('season');
     const epWord = currentLang === 'zh' ? '集' : 'ep';
     seasonSel.innerHTML = seasons.map(s =>

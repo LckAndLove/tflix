@@ -1,5 +1,12 @@
 (function (root) {
   'use strict';
+  // Apply the requested Ekko default once; subsequent manual defaults persist.
+  try {
+    if (typeof window !== 'undefined' && root.localStorage && !root.localStorage.getItem('tflix_ekko_default_v1')) {
+      root.localStorage.setItem('tflix_server', '4');
+      root.localStorage.setItem('tflix_ekko_default_v1', '1');
+    }
+  } catch (_) {}
   const sources = [
     { id: 1, name: 'Rakan', internalName: 'vixsrc', host: 'vixsrc.to', requireReferer: true, sandboxEnabled: true, startTimeParam:'startAt', quirks: [], buildUrl(type, tmdbId, season, episode) { return type === 'movie' ? `https://vixsrc.to/movie/${tmdbId}?autoPlay=true&lang=en` : `https://vixsrc.to/tv/${tmdbId}/${season}/${episode}?autoPlay=true&lang=en`; } },
     { id: 2, name: 'Bard', internalName: 'moviesapi', host: 'moviesapi.to', requireReferer: true, sandboxEnabled: true, startTimeParam:'startAt', quirks: [], buildUrl(type, tmdbId, season, episode) { return type === 'movie' ? `https://moviesapi.to/movie/${tmdbId}` : `https://moviesapi.to/tv/${tmdbId}-${season}-${episode}`; } },

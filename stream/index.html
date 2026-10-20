@@ -67,6 +67,10 @@
     .selectors { display:grid; grid-template-columns:1fr; gap:20px; margin-bottom:24px; }
     .field-label { display:block; color:#aaa; font-size:12px; margin-bottom:8px; }
     .sel { width:100%; min-height:44px; padding:10px 12px; background:#252525; color:#fff; border:1px solid #555; border-radius:3px; font-size:14px; cursor:pointer; }
+    .sel { appearance:none; -webkit-appearance:none; padding-right:36px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23bbb' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
+    #episode-status { color:#aaa; font-size:13px; line-height:1.6; margin-bottom:12px; }
+    #episode-status:empty { display:none; }
+    #episode-retry { background:#333; color:#eee; border:1px solid #555; border-radius:3px; padding:8px 12px; margin-bottom:14px; }
     .sel option { color:#fff; background:#252525; }
     .nextep-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:12px; background:#fff; color:#111; font-size:14px; font-weight:600; border:0; border-radius:3px; }
     .nextep-btn:hover:not(:disabled) { background:#ddd; }
@@ -585,7 +589,7 @@ async function changeLanguage(newLang) {
       updateTitleBar();
       for (const k in seasonCache) delete seasonCache[k];
       const seasonSel = $('season-select');
-      const seasons = (tvData.seasons || []).filter(s => s.season_number > 0);
+      const seasons = (tvData.seasons || []).filter(s => s.season_number > 0 && s.episode_count > 0);
       const sWord = t('season');
       const epWord = currentLang === 'zh' ? '集' : 'ep';
       seasonSel.innerHTML = (seasons.length ? seasons : [{ season_number: 1, episode_count: 1 }])
@@ -625,9 +629,8 @@ async function setupTv() {
   const episodeSel = $('episode-select');
 
   seasonSel.addEventListener('change', async () => {
-    state.season = parseInt(seasonSel.value) || 1;
-    state.episode = 1;
-    if(await populateEpisodes(true)) { applyEpisodeServerPreference(); loadPlayer(); }
+    const season = parseInt(seasonSel.value) || 1;
+    if(await populateEpisodes(true,season)) { applyEpisodeServerPreference(); loadPlayer(); }
   });
   episodeSel.addEventListener('change', () => {
     state.episode = parseInt(episodeSel.value) || 1;
@@ -645,7 +648,7 @@ async function setupTv() {
     state.title = tvData.name || tvData.original_name;
     updateTitleBar();
 
-    const seasons = (tvData.seasons || []).filter(s => s.season_number > 0);
+    const seasons = (tvData.seasons || []).filter(s => s.season_number > 0 && s.episode_count > 0);
     const sWord = t('season');
     const epWord = currentLang === 'zh' ? '集' : 'ep';
     seasonSel.innerHTML = (seasons.length ? seasons : [{ season_number: 1, episode_count: 1 }])
@@ -661,9 +664,9 @@ async function setupTv() {
 
 }
 
-async function populateEpisodes(setToState) {
-  const ticket=++episodeRequest,id=state.id,season=state.season,lang=currentLang;
-  const current=()=>ticket===episodeRequest && state.id===id && state.season===season && currentLang===lang;
+async function populateEpisodes(setToState,season=state.season) {
+  const ticket=++episodeRequest,id=state.id,previousSeason=state.season,lang=currentLang;
+  const current=()=>ticket===episodeRequest && state.id===id && state.season===previousSeason && currentLang===lang;
   const seasonSel  = $('season-select');
   const episodeSel = $('episode-select');
   const opt = seasonSel.options[seasonSel.selectedIndex];
@@ -679,7 +682,11 @@ async function populateEpisodes(setToState) {
     if (!data) { data = await tmdb(`/tv/${id}/season/${season}`); seasonCache[key] = data; }
     if(!current()) return false;
     const eps = data?.episodes || [];
-    if (!eps.length) throw new Error('no eps');
+    if (!eps.length) {
+      episodeSel.innerHTML='<option>—</option>';
+      $('episode-status').textContent=currentLang==='zh'?'本季暂无可选剧集':'No episodes available for this season';
+      return false;
+    }
     const epPrefix = currentLang === 'zh' ? '第 ' : 'Ep ';
     const epSuffix = currentLang === 'zh' ? ' 集' : '';
     episodeSel.innerHTML = eps.map(ep => {
@@ -699,13 +706,15 @@ async function populateEpisodes(setToState) {
   $('episode-status').textContent='';
 
   if (setToState) {
-    if (![...episodeSel.options].some(o => parseInt(o.value) === state.episode)) state.episode = 1;
+    const changed=state.season!==season;
+    state.season=season;
+    if (changed || ![...episodeSel.options].some(o => parseInt(o.value) === state.episode)) state.episode = parseInt(episodeSel.options[0].value);
     episodeSel.value = state.episode;
   }
   updateNextBtn();
   return true;
 }
-$('episode-retry').addEventListener('click',async()=>{if(await populateEpisodes(true))loadPlayer();});
+$('episode-retry').addEventListener('click',async()=>{if(await populateEpisodes(true,parseInt($('season-select').value)||state.season)){applyEpisodeServerPreference();loadPlayer();}});
 
 function episodeCountFor(seasonNum) {
   const cached = seasonCache[`${currentLang}-${state.id}-${seasonNum}`];
@@ -718,7 +727,7 @@ function computeNext() {
   const curCount = episodeCountFor(state.season);
   if (curCount && state.episode < curCount) return { season: state.season, episode: state.episode + 1 };
   const nextSeason = state.season + 1;
-  const exists = (tvData?.seasons || []).some(s => s.season_number === nextSeason);
+  const exists = (tvData?.seasons || []).some(s => s.season_number === nextSeason && s.episode_count > 0);
   if (exists) return { season: nextSeason, episode: 1 };
   return null;
 }
@@ -734,10 +743,8 @@ async function goNextEpisode() {
   const next = computeNext();
   if (!next) return;
   const seasonChanged = next.season !== state.season;
-  state.season = next.season;
-  state.episode = next.episode;
-  if (seasonChanged) { $('season-select').value = state.season; if(!await populateEpisodes(true))return; }
-  else $('episode-select').value = state.episode;
+  if (seasonChanged) { $('season-select').value = next.season; if(!await populateEpisodes(true,next.season))return; }
+  else { state.episode=next.episode; $('episode-select').value=state.episode; }
   applyEpisodeServerPreference();
   updateNextBtn();
   loadPlayer();closeWatchDrawer();

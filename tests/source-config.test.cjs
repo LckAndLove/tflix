@@ -28,3 +28,14 @@ test('every adapter declares embedding behavior for the desktop bridge',()=>{
   assert.ok(sources.every(source=>source.host&&source.internalName&&typeof source.buildUrl==='function'));
   assert.deepEqual(sources.map(source=>source.startTimeParam),['startAt','startAt','startAt','t','startAt','startAt']);
 });
+
+test('Ekko default migration runs once and preserves subsequent manual choices',()=>{
+  const vm=require('node:vm'),fs=require('node:fs');
+  const saved=new Map([['tflix_server','1'],['tflix_episode_servers_v1','manual']]);
+  const context={window:{localStorage:{getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value)}}};
+  vm.createContext(context);const script=fs.readFileSync('stream/source-config.js','utf8');
+  vm.runInContext(script,context);assert.equal(saved.get('tflix_server'),'4');
+  assert.equal(saved.get('tflix_episode_servers_v1'),'manual');
+  saved.set('tflix_server','2');vm.runInContext(script,context);
+  assert.equal(saved.get('tflix_server'),'2');
+});
