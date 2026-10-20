@@ -43,6 +43,8 @@
     }
 
     body {
+      -webkit-user-select: none;
+      user-select: none;
       background: var(--bg);
       color: var(--text);
       font-family: 'Hanken Grotesk', system-ui, sans-serif;
@@ -51,6 +53,11 @@
       overflow-x: hidden;
       max-width: 100%;
       -webkit-font-smoothing: antialiased;
+    }
+
+    input, textarea, [contenteditable="true"] {
+      -webkit-user-select: text;
+      user-select: text;
     }
 
     ::selection { background: var(--accent); color: #fff; }

@@ -13,7 +13,8 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --bg:#000; --bg-elev:#181818; --card:#242424; --card-h:#303030; --line:#383838; --accent:#e50914; --accent-h:#ff2632; --accent-soft:#351115; --text:#f5f5f1; --muted:#aaa; --green:#62c98b; --shadow:0 12px 48px #0009; --radius:4px; --radius-lg:6px; }
-    html, body { width:100%; height:100%; overflow:hidden; background:#000; color:var(--text); font-family:Arial,'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+    html, body { width:100%; height:100%; overflow:hidden; background:#000; color:var(--text); font-family:Arial,'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; -webkit-user-select:none; user-select:none; }
+    input, textarea, [contenteditable="true"] { -webkit-user-select:text; user-select:text; }
     button,select { font:inherit; }
     button,a,select { -webkit-tap-highlight-color:transparent; }
     button,a { color:inherit; }
