@@ -7,7 +7,7 @@ const sources=require('../stream/source-config.js');
 
 // Execute the whole watch page: errors must not introduce a blocking layer or
 // replace the provider, including while metadata and iframe loading are pending.
-function watch(desktop=false) {
+function watch() {
  const elements=new Map(),cards=[],handlers={},timers=new Map(),values=new Map();
  let timerId=0,now=0,frames=0;
  function node(id='') {
@@ -21,7 +21,6 @@ function watch(desktop=false) {
  for(const match of html.matchAll(/\bid="([^"]+)"/g))elements.set(match[1],node(match[1]));
  for(const id of ['watch-drawer','drawer-scrim'])elements.get(id).hidden=true;
  const window={TFLIX_SOURCE_CONFIG:sources,addEventListener(name,fn){(handlers[name] ||= []).push(fn);}};
- if(desktop)window.__TFLIX_PLAYER_ORIGIN__='http://127.0.0.1:12345/';
  const context={window,document:{getElementById:id=>elements.get(id),createElement:()=>node(),querySelector:()=>null,
   querySelectorAll:selector=>selector==='.server-card'?cards:[],addEventListener(){},body:node(),documentElement:node()},
   location:{href:'https://tflix.test/stream/index.html?type=movie&id=550',pathname:'/stream/index.html',search:'?type=movie&id=550'},
@@ -33,11 +32,10 @@ function watch(desktop=false) {
   send(type){for(const handler of handlers.message||[])handler({source:elements.get('player').contentWindow,data:{type}});},
   advance(ms){now+=ms;for(const [id,timer] of timers)if(timer.at<=now){timers.delete(id);timer.fn();}}};
 }
-for(const desktop of [false,true]) {
- test(`${desktop?'desktop':'web/Android'} playback remains directly accessible after slow loading and error signals`,()=>{
-  const p=watch(desktop),frame=p.elements.get('player');
+test('web/Android playback remains directly accessible after slow loading and error signals',()=>{
+  const p=watch(),frame=p.elements.get('player');
   const expected=sources.find(s=>s.id===4).buildUrl('movie','550',1,1);
-  assert.equal(desktop?new URL(frame.src).searchParams.get('src'):frame.src,expected);
+  assert.equal(frame.src,expected);
   p.advance(30_000);
   for(const type of ['tflix:media-error','tflix:embed-blocked','tflix:media-ready','tflix:media-playing'])p.send(type);
   p.advance(30_000);
@@ -48,4 +46,3 @@ for(const desktop of [false,true]) {
   p.cards.find(card=>card.dataset.id===6).listeners.click();
   assert.equal(vm.runInContext('state.server',p.context),6);assert.equal(p.frames(),2);
  });
-}

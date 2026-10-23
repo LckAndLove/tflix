@@ -19,7 +19,7 @@
     if (!document.getElementById('tflix-caption-layout') && document.head) {
       const style = document.createElement('style');
       style.id = 'tflix-caption-layout';
-      style.textContent = ':root:not(:has(:fullscreen)) .notflix-controller > media-control-bar.top-0 { visibility:hidden !important; pointer-events:none !important; } .notflix-timeline-progress { background:#e50914 !important; } .notflix-timeline-thumb { background:#e50914 !important; } media-controller div[noautohide][style*="--subtitle-overlay-bottom"] > div { bottom:var(--tflix-caption-bottom, 3.5%) !important; top:auto !important; left:0 !important; right:0 !important; width:auto !important; max-width:none !important; transform:none !important; display:flex !important; flex-direction:column !important; align-items:center !important; }';
+      style.textContent = ':root:not(:has(:fullscreen)) .notflix-controller > media-control-bar.top-0, :root[data-tflix-native-player] .notflix-controller > media-control-bar.top-0 { visibility:hidden !important; pointer-events:none !important; } .notflix-timeline-progress { background:#e50914 !important; } .notflix-timeline-thumb { background:#e50914 !important; } media-controller div[noautohide][style*="--subtitle-overlay-bottom"] > div { bottom:var(--tflix-caption-bottom, 3.5%) !important; top:auto !important; left:0 !important; right:0 !important; width:auto !important; max-width:none !important; transform:none !important; display:flex !important; flex-direction:column !important; align-items:center !important; }';
       document.head.appendChild(style);
     }
     const next = document.querySelector('media-controller');

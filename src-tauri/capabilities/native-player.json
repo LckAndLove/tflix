@@ -1,17 +1,22 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "native-player",
   "description": "Playback windows may report validated playback events only. No updater, file or system permissions.",
+  "identifier": "native-player",
   "local": false,
-  "windows": [
-    "playback-*"
+  "permissions": [
+    "allow-native-player-event"
   ],
   "remote": {
     "urls": [
-      "https://cinesrc.st/*"
+      "https://vixsrc.to/*",
+      "https://moviesapi.to/*",
+      "https://vidsrc.sh/*",
+      "https://cinesrc.st/*",
+      "https://vidfast.vc/*",
+      "https://vidlink.pro/*"
     ]
   },
-  "permissions": [
-    "allow-native-player-event"
+  "windows": [
+    "playback-*"
   ]
 }

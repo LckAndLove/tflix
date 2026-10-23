@@ -3,7 +3,7 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use serde::Serialize;
 
-mod player_bridge;
+mod source_config;
 mod native_player;
 
 const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
@@ -88,7 +88,7 @@ async fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String>
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let focused=app.webview_windows().into_iter().find(|(label,_)|label.starts_with("playback-")).map(|(_,window)|window).or_else(||app.get_webview_window("main"));
+            let focused=native_player::active_window(app).or_else(||app.get_webview_window("main"));
             if let Some(w) = focused {
                 let _ = w.show();
                 let _ = w.unminimize();
@@ -101,19 +101,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player, native_player::update_native_player, native_player::send_native_player, native_player::close_native_player, native_player::native_player_event])
         .setup(|app| {
             let app_handle = app.handle().clone();
-            let player_origin = player_bridge::start()?;
-            let bridge_origin = tauri::Url::parse(&player_origin)?.origin();
-            let player_script = format!(
-                "window.__TFLIX_PLAYER_ORIGIN__ = {}; window.__TFLIX_NATIVE_PLAYER__ = true;",
-                serde_json::to_string(&player_origin)?
-            );
             let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("TFLIX")
                 .inner_size(1400.0, 880.0)
                 .min_inner_size(940.0, 600.0)
                 .center()
                 .resizable(true)
-                .initialization_script(&player_script)
+                .initialization_script("window.__TFLIX_NATIVE_PLAYER__ = true;")
                 .initialization_script(INIT_SCRIPT)
                 .initialization_script_for_all_frames(INTERACTION_GUARD_SCRIPT)
                 .initialization_script_for_all_frames(PLAYER_COMPAT_SCRIPT)
@@ -136,8 +130,7 @@ pub fn run() {
                     let is_app = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
                         || (matches!(url.scheme(), "http" | "https")
                             && url.host_str() == Some("tauri.localhost"));
-                    let is_player_bridge = url.origin() == bridge_origin;
-                    if !is_app && !is_player_bridge && url.scheme() != "https" {
+                    if !is_app && url.scheme() != "https" {
                         return false;
                     }
                     true

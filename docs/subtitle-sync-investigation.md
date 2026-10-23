@@ -9,7 +9,7 @@
 ## 实际链路
 
 1. `stream/index.html` 以 TMDB ID/季/集选取第三方 iframe。
-2. Tauri 注入 `player_compat.js`，在 macOS CineSrc 中优先原生 HLS；`player_bridge.html` 提供 HTTP Referer。二者没有做字幕时间校正。
+2. Tauri 注入 `player_compat.js`，在 macOS CineSrc 中优先原生 HLS；旧版的 `player_bridge.html` 提供 HTTP Referer（原生直开改造已移除该中转页，见 [原生播放说明](native-playback.md)）。这些兼容处理没有做字幕时间校正。
 3. CineSrc 自身解析视频源及内置字幕，并通过 `/api/subtitles/search` 搜索外挂字幕；失败后请求 `subs.bright67.online/search`。
 4. 本地 `subtitle_compat.js` 拦截字幕文件下载。有效 SRT/VTT 原样通过，ASS/SSA 转换为 VTT；原文件坏掉时，再从同作品/集、同语言候选中找首个能解析的文件。
 5. CineSrc 将文件变成 Blob URL，异步创建 `<track data-custom-subtitle>`。字幕选择和偏移由其 React 状态管理。

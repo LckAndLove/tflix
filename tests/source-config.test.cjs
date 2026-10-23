@@ -23,7 +23,7 @@ test('shared adapter preserves each legacy movie and episode URL exactly',()=>{
   assert.deepEqual(sources.map(source=>source.buildUrl('tv','1399',2,3)),tv);
 });
 
-test('every adapter declares embedding behavior for the desktop bridge',()=>{
+test('every adapter retains web embedding options and native playback metadata',()=>{
   assert.deepEqual(sources.map(source=>source.sandboxEnabled),[true,true,false,true,false,false]);
   assert.ok(sources.every(source=>source.host&&source.internalName&&typeof source.buildUrl==='function'));
   assert.deepEqual(sources.map(source=>source.startTimeParam),['startAt','startAt','startAt','t','startAt','startAt']);

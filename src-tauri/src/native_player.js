@@ -5,10 +5,10 @@
   const config=window.__TFLIX_DIRECT_PLAYER__;
   if(window.top!==window.self || !config)return;
   let model=config.request.model||{},root,host,panel='',idle=null,playing=false,synchronized=false;
-  let frameSerial=0,lastReady=null;
+  let frameSerial=0,lastReady=null,channel=Promise.resolve();
   const frameIds=new Map(),frameNumbers=new WeakMap();
   const escapeIcon='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg>';
-  function send(payload){window.__TAURI__.core.invoke('native_player_event',{payload}).catch(()=>{});}
+  function send(payload){channel=channel.catch(()=>{}).then(()=>window.__TAURI__.core.invoke('native_player_event',{payload})).catch(()=>{});}
   function currentFrame(source){
     const pending=[window],visited=new Set();
     while(pending.length){const frame=pending.pop();if(frame===source)return true;if(!frame||visited.has(frame))continue;visited.add(frame);try{for(let i=0;i<frame.frames.length;i++)pending.push(frame.frames[i]);}catch{}}
@@ -72,7 +72,9 @@
   }
   function render(){
     if(!root)return;
-    root.querySelector('#title').textContent=(model.title||'TFLIX')+(model.type==='tv'?` · S${model.season} E${model.episode}`:'');
+    const title=(model.title||'TFLIX')+(model.type==='tv'?` · S${model.season} E${model.episode}`:'');
+    root.querySelector('#title').textContent=title;
+    document.title=title+' — TFLIX';
     root.querySelector('#back').setAttribute('aria-label',word('返回','Back'));
     root.querySelector('#episodes').textContent=word('选集','Episodes');root.querySelector('#episodes').hidden=model.type!=='tv';
     root.querySelector('#source').textContent=(model.sources||[]).find(x=>x.id===model.server)?.name||'Ekko';
@@ -82,6 +84,7 @@
   window.__TFLIX_UPDATE_PLAYER__=value=>{model=value;render();if(lastReady)send(lastReady);};
   function mount(){
     if(!document.body)return;
+    document.documentElement.dataset.tflixNativePlayer='true';
     if(!host){
       host=document.createElement('div');host.id='tflix-native-controls';host.style.cssText='position:fixed;inset:0 0 auto;z-index:2147483647;pointer-events:none';
       root=host.attachShadow({mode:'closed'});

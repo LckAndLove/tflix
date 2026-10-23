@@ -27,21 +27,67 @@ pub struct PlayerRequest {
 }
 
 fn validate(request: &PlayerRequest) -> Result<tauri::Url, String> {
-    let url = tauri::Url::parse(&request.url).map_err(|_| "Invalid player URL")?;
-    if request.server != 4
-        || request.id.is_empty()
+    if request.id.is_empty()
+        || request.id.len() > 20
         || !request.id.bytes().all(|c| c.is_ascii_digit())
         || !matches!(request.media_type.as_str(), "movie" | "tv")
         || request.season == 0
         || request.episode == 0
-        || url.scheme() != "https"
-        || url.host_str() != Some("cinesrc.st")
+        || request.url.len() > 4096
+    {
+        return Err("Invalid player selection".into());
+    }
+    let source = super::source_config::all()
+        .into_iter()
+        .find(|s| s["id"].as_u64() == Some(request.server as u64))
+        .ok_or("Invalid player source")?;
+    let key = if request.media_type == "movie" {
+        "movieUrl"
+    } else {
+        "tvUrl"
+    };
+    let expected = source[key]
+        .as_str()
+        .ok_or("Source URL missing")?
+        .replace("{tmdbId}", &request.id)
+        .replace("{season}", &request.season.to_string())
+        .replace("{episode}", &request.episode.to_string());
+    let expected = tauri::Url::parse(&expected).map_err(|_| "Invalid source configuration")?;
+    let url = tauri::Url::parse(&request.url).map_err(|_| "Invalid player URL")?;
+    if url.scheme() != "https"
+        || url.host_str() != expected.host_str()
+        || url.path() != expected.path()
         || !url.username().is_empty()
         || url.password().is_some()
         || url.port().is_some()
-        || url.path() != format!("/embed/{}/{}", request.media_type, request.id)
+        || url.fragment().is_some()
     {
-        return Err("Invalid player source".into());
+        return Err("Invalid player URL".into());
+    }
+    let start = source["startTimeParam"].as_str();
+    let mut actual = Vec::new();
+    let mut start_seen = false;
+    for (key, value) in url.query_pairs() {
+        if Some(key.as_ref()) == start {
+            let time = value
+                .parse::<u32>()
+                .map_err(|_| "Invalid playback position")?;
+            if start_seen || time > 604800 {
+                return Err("Invalid playback position".into());
+            }
+            start_seen = true;
+        } else {
+            actual.push((key.into_owned(), value.into_owned()));
+        }
+    }
+    let mut expected: Vec<_> = expected
+        .query_pairs()
+        .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        .collect();
+    actual.sort();
+    expected.sort();
+    if actual != expected {
+        return Err("Player URL does not match the selected content".into());
     }
     Ok(url)
 }
@@ -49,12 +95,26 @@ fn validate(request: &PlayerRequest) -> Result<tauri::Url, String> {
 fn controller(window: &WebviewWindow) -> Result<(), String> {
     let url = window.url().map_err(|e| e.to_string())?;
     if window.label() == "main"
-        && (url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost"))
+        && ((url.scheme() == "tauri" && url.host_str() == Some("localhost"))
+            || (matches!(url.scheme(), "http" | "https")
+                && url.host_str() == Some("tauri.localhost")))
     {
         Ok(())
     } else {
         Err("Player controller required".into())
     }
+}
+
+pub fn active_window(app: &tauri::AppHandle) -> Option<WebviewWindow> {
+    let label = app
+        .state::<PlayerState>()
+        .active
+        .lock()
+        .ok()?
+        .as_ref()?
+        .1
+        .clone();
+    app.get_webview_window(&label)
 }
 
 fn is_active(app: &tauri::AppHandle, session: u64) -> bool {
@@ -72,7 +132,7 @@ pub async fn open_native_player(
     window: WebviewWindow,
     request: PlayerRequest,
 ) -> Result<u64, String> {
-    // Only the bundled controller can create windows; source pages get no IPC permissions.
+    // Only the bundled controller can create windows; source pages may report events only.
     controller(&window)?;
     let url = validate(&request)?;
     let session = app
@@ -275,7 +335,7 @@ pub async fn update_native_player(
     if is_active(&app, session) {
         if let Some(player) = app.get_webview_window(&format!("playback-{session}")) {
             player
-                .eval(&format!("window.__TFLIX_UPDATE_PLAYER__?.({});", model))
+                .eval(format!("window.__TFLIX_UPDATE_PLAYER__?.({});", model))
                 .map_err(|e| e.to_string())?;
         }
     }
@@ -307,7 +367,7 @@ pub async fn send_native_player(
         if let Some(player) = app.get_webview_window(&format!("playback-{session}")) {
             let value = serde_json::json!({"frameId":frame_id,"command":command});
             player
-                .eval(&format!("window.__TFLIX_NATIVE_SEND__?.({value});"))
+                .eval(format!("window.__TFLIX_NATIVE_SEND__?.({value});"))
                 .map_err(|e| e.to_string())?;
         }
     }
@@ -337,7 +397,7 @@ mod tests {
     use super::*;
     fn request() -> PlayerRequest {
         PlayerRequest {
-            url: "https://cinesrc.st/embed/tv/123542?s=1&e=3".into(),
+            url: "https://cinesrc.st/embed/tv/123542?s=1&e=3&autoplay=true&autonext=false&prioritize=true&lastserver=wave".into(),
             server: 4,
             media_type: "tv".into(),
             id: "123542".into(),
@@ -351,6 +411,42 @@ mod tests {
     #[test]
     fn accepts_the_selected_ekko_title() {
         assert!(validate(&request()).is_ok());
+    }
+    #[test]
+    fn every_adapter_url_is_accepted_for_movies_and_tv() {
+        for source in super::super::source_config::all() {
+            for media_type in ["movie", "tv"] {
+                let mut value = request();
+                value.server = source["id"].as_u64().unwrap() as u8;
+                value.media_type = media_type.into();
+                let key = if media_type == "movie" {
+                    "movieUrl"
+                } else {
+                    "tvUrl"
+                };
+                value.url = source[key]
+                    .as_str()
+                    .unwrap()
+                    .replace("{tmdbId}", &value.id)
+                    .replace("{season}", "1")
+                    .replace("{episode}", "3");
+                assert!(
+                    validate(&value).is_ok(),
+                    "source {} {}",
+                    value.server,
+                    media_type
+                );
+                let separator = if value.url.contains('?') { '&' } else { '?' };
+                value.url += &format!(
+                    "{}{}=120",
+                    separator,
+                    source["startTimeParam"].as_str().unwrap()
+                );
+                assert!(validate(&value).is_ok());
+                value.url += "&unexpected=value";
+                assert!(validate(&value).is_err());
+            }
+        }
     }
     #[test]
     fn validates_native_channel_without_accepting_script_or_failure_commands() {

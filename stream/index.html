@@ -369,14 +369,13 @@ function loadPlayer() {
   const src = sourceUrlFor(state.server);
   updateServerCards();
 
-  if (window.TFLIX_NATIVE_PLAYER && state.server === 4) {
+  if (window.TFLIX_NATIVE_PLAYER) {
     $('player').removeAttribute('src');
     window.TFLIX_NATIVE_PLAYER.open({url:src,server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang,model:nativePlayerModel()})
       .catch(()=>toast(currentLang==='zh'?'播放器未能打开，请重试':'Could not open the player. Please retry.'));
     syncUrl();
     return;
   }
-  window.TFLIX_NATIVE_PLAYER?.close().catch(()=>{});
 
   // Recreate the iframe on every load so the Permissions Policy
   // (allow="fullscreen; ...") is re-applied for the new origin.
@@ -395,11 +394,7 @@ function loadPlayer() {
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
   // Use replace so iframe loads don't pollute the browser history stack
-  // Desktop custom protocols cannot send an HTTP Referer to embed providers.
-  // The loopback wrapper supplies one without moving the app or its storage.
-  frame.src = window.__TFLIX_PLAYER_ORIGIN__
-    ? `${window.__TFLIX_PLAYER_ORIGIN__}?src=${encodeURIComponent(src)}&source=${state.server}`
-    : src;
+  frame.src = src;
   old.replaceWith(frame);
 
   syncUrl();

@@ -13,12 +13,13 @@ TFLIX is a movie and TV discovery and streaming app powered by [TMDB](https://ww
 - Search and browse movies and TV shows using TMDB metadata
 - View title details, artwork, ratings, release information, and episode descriptions
 - Select a TV season and episode from the title page
-- Choose from six embedded streaming sources; the selected source can be changed from the player
+- Choose from six streaming sources; the desktop app opens their player pages in a dedicated native WebView, while web and Android use iframes
 - Resume recently watched titles using locally saved playback progress
+- Change episodes and sources from the desktop player controls; use the custom subtitle panel on Ekko
 - Use the website, the Tauri desktop app, or the Android app for phones, tablets, and Android TV
 - Block pop-up windows opened by embedded players in the desktop and Android apps
 
-The app uses TMDB IDs to build embed URLs. Playback availability and subtitle timing depend on the selected third-party source and its version of the title.
+The app uses TMDB IDs to build provider player URLs. Playback availability and subtitle timing depend on the selected third-party source and its version of the title.
 
 ## Get TFLIX
 
@@ -28,7 +29,9 @@ Open [tflix.nunesnetwork.com](https://tflix.nunesnetwork.com/) in a browser. Web
 
 ### Desktop
 
-Download the installer for macOS, Windows, or Linux from the [latest GitHub release](https://github.com/LckAndLove/tflix/releases/latest). The desktop app is built with Tauri and loads the bundled web interface.
+Download the installer for macOS, Windows, or Linux from the [latest GitHub release](https://github.com/LckAndLove/tflix/releases/latest). The desktop app is built with Tauri and loads the bundled browsing interface. Playback opens in a separate native window that loads the provider directly, without a TFLIX iframe or loopback server. Closing that window returns to the title details. Playback failures and loading states are handled by the provider; TFLIX does not probe availability or switch sources automatically.
+
+See the [native playback notes](docs/native-playback.md) for the architecture and validation status.
 
 ### Android
 
