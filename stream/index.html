@@ -25,10 +25,6 @@
     header { height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; background:linear-gradient(#000e,#000b); position:absolute; inset:0 0 auto; z-index:50; transition:opacity .25s; }
     body.controls-idle header { opacity:0; pointer-events:none; }
     html.keynav body.controls-idle header:focus-within { opacity:1; pointer-events:auto; }
-    .playback-failure { position:absolute; inset:0; z-index:3; display:grid; place-content:center; text-align:center; gap:16px; padding:80px 24px; background:#101010; }
-    .playback-failure h2 { font-size:24px; font-weight:500; }
-    .playback-failure p { max-width:500px; color:#aaa; font-size:14px; line-height:1.7; }
-    .failure-action { justify-self:center; background:#fff; color:#111; border:0; border-radius:3px; padding:12px 22px; font-weight:600; }
     .server-card:disabled { opacity:.45; cursor:not-allowed; }
     .back-btn { width:32px; height:36px; display:grid; place-items:center; flex-shrink:0; color:#fff; background:none; border:0; }
     .back-btn:hover { opacity:.7; }
@@ -39,10 +35,6 @@
     .watch-action:hover,.support-btn:hover,.watch-action[aria-expanded="true"] { background:#ffffff18; color:#fff; }
     .watch-action[aria-expanded="true"] { box-shadow:inset 0 -2px var(--accent); }
     #sources-btn { width:110px; flex-shrink:0; }
-    .source-indicator { width:6px; height:6px; border-radius:50%; background:#777; }
-    #sources-btn[data-state="playing"] .source-indicator,#sources-btn[data-state="available"] .source-indicator { background:var(--green); }
-    #sources-btn[data-state="checking"] .source-indicator,#sources-btn[data-state="switching"] .source-indicator { background:#e7b65b; }
-    #sources-btn[data-state="failed"] .source-indicator { background:#ff7070; }
     .current-source { color:#999; font-size:12px; }
     #support-btn { display:none; }
     main { height:100vh; height:100dvh; position:relative; }
@@ -50,21 +42,6 @@
     .player-wrap { position:relative; background:#000; }
     #player { position:absolute; inset:0; width:100%; height:100%; border:0; }
     #player:fullscreen,#player:-webkit-full-screen { position:fixed; width:100vw; height:100vh; }
-    .player-loading { position:absolute; inset:0; display:grid; place-items:center; overflow:hidden; background:radial-gradient(ellipse at 50% 45%,#171719 0%,#0b0b0c 42%,#000 78%); z-index:2; pointer-events:none; opacity:1; transition:opacity .45s ease,visibility .45s ease; }
-    .player-loading::before,.player-loading::after { content:""; position:absolute; width:min(68vw,720px); aspect-ratio:1; border-radius:50%; background:#e50914; filter:blur(110px); opacity:.055; transform:translate(-36%,-38%); }
-    .player-loading::after { width:min(50vw,540px); opacity:.035; transform:translate(60%,42%); }
-    .player-loading.hide { opacity:0; visibility:hidden; }
-    .loading-content { position:relative; display:grid; justify-items:center; gap:15px; width:min(360px,calc(100% - 40px)); text-align:center; }
-    .loading-mark { position:relative; display:grid; place-items:center; width:64px; height:64px; margin-bottom:5px; border:1px solid #ffffff12; border-radius:50%; background:linear-gradient(145deg,#ffffff0d,#ffffff03); box-shadow:0 14px 60px #0009,0 0 40px #e5091412; }
-    .loading-mark::before { content:""; position:absolute; inset:-3px; border:2px solid transparent; border-top-color:var(--accent); border-right-color:#e5091466; border-radius:50%; animation:spin 1.05s linear infinite; }
-    .loading-mark::after { content:""; position:absolute; inset:5px; border:1px solid #ffffff12; border-radius:50%; }
-    .loading-logo { color:var(--accent); font-size:16px; font-weight:900; letter-spacing:-.08em; }
-    .loading-title { max-width:100%; overflow:hidden; color:#f5f5f1; font-size:16px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
-    .loading-caption { color:#888; font-size:12px; letter-spacing:.02em; }
-    .loading-progress { width:150px; height:2px; margin-top:3px; overflow:hidden; background:#ffffff17; }
-    .loading-progress::after { content:""; display:block; width:38%; height:100%; background:var(--accent); box-shadow:0 0 12px #e50914aa; animation:loading-sweep 1.5s ease-in-out infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    @keyframes loading-sweep { from { transform:translateX(-110%); } to { transform:translateX(370%); } }
     .drawer-scrim { position:fixed; inset:60px 0 0; z-index:55; background:#0003; border:0; cursor:default; }
     .controls-col { position:absolute; top:72px; right:20px; width:min(400px,calc(100% - 40px)); max-height:calc(100% - 92px); overflow:auto; z-index:60; background:#181818; border:1px solid #353535; border-radius:6px; box-shadow:var(--shadow); }
     .drawer-header { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 0; gap:16px; }
@@ -86,11 +63,6 @@
     .nextep-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:12px; background:#fff; color:#111; font-size:14px; font-weight:600; border:0; border-radius:3px; }
     .nextep-btn:hover:not(:disabled) { background:#ddd; }
     .nextep-btn:disabled { opacity:.4; cursor:default; }
-    .source-health { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-bottom:20px; }
-    .source-health-copy { display:flex; align-items:baseline; gap:8px; color:#aaa; font-size:12px; line-height:1.6; }
-    .source-health[data-state="playing"] .source-health-copy,.source-health[data-state="available"] .source-health-copy { color:var(--green); }
-    .source-health[data-state="failed"] .source-health-copy { color:#ff8a8a; }
-    .source-health-dot { width:5px; height:5px; flex:0 0 auto; border-radius:50%; background:currentColor; }
     .server-grid { display:grid; grid-template-columns:1fr; gap:0; }
     .server-card { display:grid; grid-template-columns:6px minmax(0,1fr); gap:12px; align-items:center; min-height:66px; width:100%; padding:14px 10px; background:none; border:0; border-bottom:1px solid #ffffff12; text-align:left; color:#ddd; }
     .server-card:last-child { border-bottom:0; }
@@ -101,10 +73,6 @@
     .s-name { font-size:14px; font-weight:600; }
     .s-note { grid-column:1/-1; font-size:11px; color:#999; line-height:1.5; }
     .s-state { font-size:10px; color:#999; }
-    .server-card[data-status="playing"] .s-dot,.server-card[data-status="available"] .s-dot { background:var(--green); }
-    .server-card[data-status="playing"] .s-state,.server-card[data-status="available"] .s-state { color:var(--green); }
-    .server-card[data-status="checking"] .s-dot { background:#e7b65b; }
-    .server-card[data-status="failed"] .s-state { color:#ff8a8a; }
     #toast { position:fixed; bottom:110px; left:50%; transform:translateX(-50%); max-width:90%; padding:10px 18px; border-radius:3px; background:#252525ee; color:#fff; font-size:13px; opacity:0; pointer-events:none; z-index:90; transition:opacity .2s; }
     #toast.show { opacity:1; }
     .fatal { display:grid; place-content:center; height:100%; text-align:center; gap:16px; padding:24px; color:#aaa; }
@@ -115,13 +83,11 @@
     .controls-col[data-panel="sources"] .drawer-header h2 { font-size:14px; }
     .controls-col[data-panel="sources"] .drawer-close { padding:4px 0 4px 8px; font-size:11px; }
     .controls-col[data-panel="sources"] .panel { padding:6px; }
-    .controls-col[data-panel="sources"] .source-health { display:none; }
-    .controls-col[data-panel="sources"] .source-health-copy { gap:6px; font-size:11px; }
     .controls-col[data-panel="sources"] .server-card { min-height:34px; padding:7px 8px; gap:8px; }
     .controls-col[data-panel="sources"] .s-name { font-size:12px; }
     html.keynav .kf { outline:2px solid #fff; outline-offset:2px; }
     @media (max-width:700px) { header { padding:0 12px; gap:8px; height:56px; } main { height:100vh; height:100dvh; } .logo { display:none; } .now-title { font-size:13px; } .ep-tag { display:none; } .watch-action { padding:6px 8px; font-size:12px; } .current-source { display:none; } .support-btn { padding:6px; } .drawer-scrim { top:56px; } .controls-col { right:12px; width:min(380px,calc(100% - 24px)); } }
-    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } .loading-mark::before,.loading-progress::after { animation:none; } .loading-progress::after { width:38%; transform:translateX(80%); } }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
 
     /* Player chrome: quiet overlays and a visual episode browser. */
     header { height:76px; padding:0 32px; gap:22px; background:linear-gradient(#000b,transparent); }
@@ -187,15 +153,6 @@
   <main id="main">
     <div class="player-col">
       <div class="player-wrap" id="player-wrap">
-        <div class="player-loading" id="player-loading" role="status" aria-live="polite">
-          <div class="loading-content">
-            <div class="loading-mark" aria-hidden="true"><span class="loading-logo">TFLIX</span></div>
-            <p class="loading-title" id="player-loading-title">正在准备播放</p>
-            <p class="loading-caption" id="player-loading-label">正在连接播放源…</p>
-            <div class="loading-progress" aria-hidden="true"></div>
-          </div>
-        </div>
-        <div class="playback-failure" id="playback-failure" role="status" hidden><h2 id="failure-title"></h2><p id="failure-copy"></p><button class="failure-action" id="failure-action" type="button"></button></div>
         <iframe id="player" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allowfullscreen allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *"></iframe>
       </div>
     </div>
@@ -223,9 +180,6 @@
       </div>
 
       <div class="panel" id="servers-panel">
-        <div class="source-health" id="source-health" data-state="checking" role="status" aria-live="polite">
-          <div class="source-health-copy"><span class="source-health-dot"></span><span id="source-health-text">Checking source…</span></div>
-        </div>
         <div class="server-grid" id="server-grid"></div>
       </div>
     </aside>
@@ -252,7 +206,6 @@ const LANG_STORAGE_KEY = 'tflix_lang';
 
 const I18N = {
   en: {
-    sourceBlocked:'Unavailable in this player', failureTitle:'This source cannot play', failureCopy:'This source is unavailable or does not support embedding. Try another source; your episode selection is preserved.', failureAction:'Choose another source',
     episodes: 'Episodes', sources: 'Choose source', close: 'Close',
     langShort: 'EN',
     back: 'Back',
@@ -264,20 +217,7 @@ const I18N = {
     nextEp: 'Next Episode',
     nextEpTitle: 'Next: S%s E%s',
     noNextEp: 'No next episode',
-    sourceManual: 'Player loaded; choose a backup source in settings if needed',
-    sourceSelectedLabel: 'Selected',
-    sourceChecking: 'Loading player…',
-    sourceReady: 'Video found on %s · waiting to play',
-    sourcePaused:'Paused · %s',  sourcePlaying: 'Playing on %s',
 
-
-
-
-
-    sourceCheckingLabel: 'Checking',
-    sourceReadyLabel: 'Video found',
-    sourcePlayingLabel: 'Playing',
-    sourceFailedLabel: 'No video',
     metadataFailed:'Details could not be loaded. Playback is still available.', episodeFailed:'Episode list unavailable. Retry this season.', loading: 'Loading…',
     movieFallback: 'Movie',
     seriesFallback: 'Series',
@@ -289,7 +229,6 @@ const I18N = {
     switchedToast: 'Switched to English'
   },
   zh: {
-    sourceBlocked:'当前播放器不支持', failureTitle:'这个播放源暂时无法播放', failureCopy:'当前来源不可用或不支持嵌入。请尝试其他播放源，已保留当前选集。', failureAction:'选择其他播放源',
     episodes: '选集', sources: '选择播放源', close: '关闭',
     langShort: '中',
     back: '返回',
@@ -301,20 +240,7 @@ const I18N = {
     nextEp: '下一集',
     nextEpTitle: '下一集：第 %s 季 第 %s 集',
     noNextEp: '没有下一集',
-    sourceManual: '播放器已加载，可在设置中选择备用线路',
-    sourceSelectedLabel: '已选择',
-    sourceChecking: '正在加载播放器…',
-    sourceReady: '%s 找到视频 · 等待开始播放',
-    sourcePaused:'已暂停 · %s',  sourcePlaying: '正在播放 · %s',
 
-
-
-
-
-    sourceCheckingLabel: '检测中',
-    sourceReadyLabel: '找到视频',
-    sourcePlayingLabel: '正在播放',
-    sourceFailedLabel: '未出画面',
     metadataFailed:'影片信息加载失败，仍可继续播放。', episodeFailed:'选集列表加载失败，请重试本季。', loading: '加载中…',
     movieFallback: '电影',
     seriesFallback: '电视剧',
@@ -351,19 +277,10 @@ let state = null;          // { type, id, season, episode, server, title }
 let tvData = null;         // /tv/{id} details
 let episodeRequest=0,languageRequest=0;
 const seasonCache = {};    // cached season episode lists
-let sourceStatuses = {};
-let playerMediaDetected = false;
-const PLAYER_LOAD_TIMEOUT_MS = 10_000;
-let playerLoadingTimer = null;
 let latestMediaProgress = null;
 let progressContentKey = null;
 let pendingSourceSeek = null;
 let sourceTimeParameterApplied = false;
-
-function clearPlayerLoadingTimer() {
-  if (playerLoadingTimer !== null && typeof clearTimeout === 'function') clearTimeout(playerLoadingTimer);
-  playerLoadingTimer = null;
-}
 
 /* ─── PARAMS ─── */
 function readParams() {
@@ -447,20 +364,8 @@ function syncProgressContent() {
 function loadPlayer() {
   syncProgressContent();
   resetWatchPlaybackState();
-  clearPlayerLoadingTimer();
-  $('playback-failure').hidden = true;
   sourceTimeParameterApplied=false;
   const src = sourceUrlFor(state.server);
-  const loader = $('player-loading');
-  loader.classList.remove('hide');
-  const loadingTitle=$('player-loading-title'), loadingLabel=$('player-loading-label');
-  if(loadingTitle) loadingTitle.textContent = state.title || (state.type === 'movie' ? t('movieFallback') : t('seriesFallback'));
-  if(loadingLabel) loadingLabel.textContent = currentLang === 'zh' ? '正在连接播放源…' : 'Connecting to the source…';
-
-  sourceStatuses={};
-  playerMediaDetected=false;
-  sourceStatuses[state.server] = 'checking';
-  updateSourceStatus('checking', t('sourceChecking'));
   updateServerCards();
 
   // Recreate the iframe on every load so the Permissions Policy
@@ -479,17 +384,6 @@ function loadPlayer() {
   // iframes (Xayah / Ekko load the real player inside a second iframe).
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
-  frame.onload = () => {
-    if ($('player') !== frame) return;
-    if (!window.__TFLIX_PLAYER_ORIGIN__ && !playerMediaDetected) {
-      clearPlayerLoadingTimer();
-      loader.classList.add('hide');
-      hidePlaybackFailure();
-      sourceStatuses[state.server]='selected';
-      updateServerCards();
-      updateSourceStatus('manual', t('sourceManual'));
-    }
-  };
   // Use replace so iframe loads don't pollute the browser history stack
   // Desktop custom protocols cannot send an HTTP Referer to embed providers.
   // The loopback wrapper supplies one without moving the app or its storage.
@@ -498,67 +392,18 @@ function loadPlayer() {
     : src;
   old.replaceWith(frame);
 
-  // Keep the designed loading screen until media is ready. If the provider
-  // never reports readiness, stop waiting and let the user choose a backup.
-  playerLoadingTimer=setTimeout(()=>{
-    if($('player')!==frame || playerMediaDetected) return;
-    loader.classList.add('hide');
-    sourceStatuses[state.server]='failed';
-    updateServerCards();
-    updateSourceStatus('failed',t('failureTitle'));
-    showPlaybackFailure();
-  },PLAYER_LOAD_TIMEOUT_MS);
   syncUrl();
   if (state.title) updateTitleBar();
 }
 
 function serverName(id) { return serverUrlResolvers[id]?.name || `#${id}`; }
 
-function updateSourceStatus(status, message) {
-  const region = $('source-health');
-  const label = $('source-health-text');
-  if (!region || !label) return;
-  region.dataset.state = status;
-  $('sources-btn').dataset.state = status;
-  $('sources-btn').title = message;
-  label.textContent = message;
-}
-
 function updateServerCards() {
   if(state) $('sources-label').textContent=serverName(state.server);
   document.querySelectorAll('.server-card').forEach(card => {
     const id = Number(card.dataset.id);
-    const status = sourceStatuses[id] || 'unknown';
-    card.dataset.status = status;
     card.setAttribute('aria-pressed',String(id===state.server));
   });
-}
-
-function onPlayerMediaEvent(event) {
-  if (!event.data || !['tflix:media-ready', 'tflix:media-playing', 'tflix:media-error'].includes(event.data.type)) return;
-  if (!isCurrentPlayerFrame(event.source)) return;
-  if (event.data.type === 'tflix:media-error') {
-    if (typeof clearTimeout === 'function') clearTimeout(playerLoadingTimer);
-    playerLoadingTimer = null;
-    playerMediaDetected=false;
-    sourceStatuses[state.server]='failed';
-    $('player-loading')?.classList.add('hide');
-    updateServerCards();
-    updateSourceStatus('failed',t('failureTitle'));
-    showPlaybackFailure();
-    return;
-  }
-  hidePlaybackFailure();
-  const playing = event.data.type === 'tflix:media-playing';
-  // A playable video may require a user gesture. Do not switch it away.
-  if (sourceStatuses[state.server] === 'playing' && !playing) return;
-  playerMediaDetected = true;
-  if (typeof clearTimeout === 'function') clearTimeout(playerLoadingTimer);
-  playerLoadingTimer = null;
-  $('player-loading')?.classList.add('hide');
-  sourceStatuses[state.server] = playing ? 'playing' : 'available';
-  updateServerCards();
-  updateSourceStatus(playing ? 'playing' : 'available', t(playing ? 'sourcePlaying' : 'sourceReady').replace('%s', serverName(state.server)));
 }
 
 function isCurrentPlayerFrame(source) {
@@ -578,11 +423,8 @@ function isCurrentPlayerFrame(source) {
   return false;
 }
 
-window.addEventListener('message', onPlayerMediaEvent);
 function updateTitleBar() {
   const base = state.title || (state.type === 'movie' ? t('movieFallback') : t('seriesFallback'));
-  const loadingTitle=$('player-loading-title');
-  if(loadingTitle) loadingTitle.textContent=base;
   const epTag = currentLang === 'zh'
     ? ` <span class="ep-tag">· 第 ${state.season} 季 第 ${state.episode} 集</span>`
     : ` <span class="ep-tag">· S${state.season} E${state.episode}</span>`;
@@ -626,7 +468,6 @@ function buildServers() {
 function applyTranslations() {
   document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
   $('lang-label').textContent = t('langShort');
-  $('failure-action').textContent = t('failureAction');
   $('episodes-label').textContent = t('episodes');
   $('sources-label').textContent = state ? serverName(state.server) : '—';
   $('drawer-close').textContent = t('close');
@@ -648,8 +489,6 @@ function applyTranslations() {
     updateNextBtn();
     buildServers();
   }
-  $('player-loading-title').textContent=state?.title || (state?.type==='movie'?t('movieFallback'):t('seriesFallback'));
-  $('player-loading-label').textContent=currentLang==='zh'?'正在连接播放源…':'Connecting to the source…';
 }
 
 async function changeLanguage(newLang) {
@@ -906,8 +745,6 @@ function toast(msg){
   t._tm = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-window.addEventListener('message',event=>{if(event.data?.type==='tflix:media-paused' && isCurrentPlayerFrame(event.source) && playerMediaDetected)updateSourceStatus('available',t('sourcePaused').replace('%s',serverName(state.server)));});
-
 /* ─── PROVIDER EPISODE SELECTION ─── */
 window.addEventListener('message',async event=>{
   if(event.data?.type!=='tflix:episode-changed' || !isCurrentPlayerFrame(event.source) || state?.type!=='tv')return;
@@ -974,31 +811,6 @@ window.addEventListener('message',event=>{
 
 /* ─── END WATCH PROGRESS ─── */
 
-/* Playback failures leave source selection to the user. */
-function hidePlaybackFailure() {
-  const panel=$('playback-failure');
-  if(panel) panel.hidden=true;
-}
-function showPlaybackFailure() {
-  $('failure-title').textContent=t('failureTitle');
-  $('failure-copy').textContent=t('failureCopy');
-  $('playback-failure').hidden=false;
-  revealWatchControls();
-}
-$('failure-action').addEventListener('click',()=>openWatchDrawer('sources'));
-window.addEventListener('message',event=>{
-  if(event.data?.type !== 'tflix:embed-blocked' || !isCurrentPlayerFrame(event.source)) return;
-  if (typeof playerLoadingTimer !== 'undefined' && playerLoadingTimer !== null) {
-    if (typeof clearTimeout === 'function') clearTimeout(playerLoadingTimer);
-    playerLoadingTimer = null;
-  }
-  $('player-loading')?.classList.add('hide');
-  sourceStatuses[state.server]='failed';
-  playerMediaDetected=false;
-  updateServerCards();
-  updateSourceStatus('failed',t('failureTitle')); showPlaybackFailure();
-});
-
 let chromeTimer=null, watchPlaying=false;
 function resetWatchPlaybackState() {
   watchPlaying=false;
@@ -1010,7 +822,7 @@ function revealWatchControls() {
   document.body.classList.remove('controls-idle');
   clearTimeout(chromeTimer);
   chromeTimer=setTimeout(()=>{
-    if(watchPlaying && $('watch-drawer')?.hidden && $('playback-failure')?.hidden && !(document.documentElement.classList.contains('keynav') && document.querySelector('header:focus-within'))) document.body.classList.add('controls-idle');
+    if(watchPlaying && $('watch-drawer')?.hidden && !(document.documentElement.classList.contains('keynav') && document.querySelector('header:focus-within'))) document.body.classList.add('controls-idle');
   },3500);
 }
 for(const name of ['pointermove','pointerdown','keydown']) document.addEventListener(name,revealWatchControls,{passive:true});
@@ -1139,8 +951,6 @@ $('back-btn').addEventListener('click', () => {
       const items=Array.from(drawer.querySelectorAll('button,select')).filter(el=>vis(el) && !el.disabled);
       return items.map(el=>({items:[el]}));
     }
-    const failure=$('playback-failure');
-    if(failure && !failure.hidden) secs.push({items:[$('failure-action')]});
     const header = [$('back-btn'), $('episodes-btn'), $('sources-btn'), $('lang-btn'), $('support-btn')].filter(vis);
     if (header.length) secs.push({ items: header });
     const tv = $('tv-panel');

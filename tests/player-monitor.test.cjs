@@ -27,26 +27,6 @@ test('does not accept an empty video as successful playback', () => {
   assert.deepEqual(signals, []);
 });
 
-function playerState() {
-  const html=fs.readFileSync('stream/index.html','utf8');
-  const handler=html.slice(html.indexOf('function onPlayerMediaEvent('),html.indexOf('\nfunction isCurrentPlayerFrame('));
-  const context={state:{server:4},sourceStatuses:{},playerMediaDetected:false,
-    isCurrentPlayerFrame:()=>true,$:()=>({classList:{add(){}}}),
-    hidePlaybackFailure(){context.failureShown=false;},showPlaybackFailure(){context.failureShown=true;},
-    updateServerCards(){},updateSourceStatus(){},t:()=>'%s',serverName:()=> 'Ekko'};
-  vm.createContext(context);vm.runInContext(handler,context);
-  return {context,send:type=>context.onPlayerMediaEvent({data:{type},source:{}})};
-}
-test('ready and playing events preserve the manually chosen source',()=>{
-  const {context,send}=playerState();send('tflix:media-ready');send('tflix:media-playing');send('tflix:media-ready');
-  assert.equal(context.state.server,4);assert.equal(context.playerMediaDetected,true);
-  assert.equal(context.sourceStatuses[4],'playing');
-});
-test('errors keep the selected source and recovered playback clears the failure UI',()=>{
-  const {context,send}=playerState();send('tflix:media-ready');send('tflix:media-error');
-  assert.equal(context.state.server,4);assert.equal(context.failureShown,true);
-  send('tflix:media-playing');assert.equal(context.failureShown,false);assert.equal(context.state.server,4);
-});
 test('remote navigation reaches manual source cards without an automatic retry action',()=>{
   const html=fs.readFileSync('stream/index.html','utf8');
   const start=html.indexOf('  function getSections()'),end=html.indexOf('\n  function focusInitial()',start);

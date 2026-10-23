@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const html=require('node:fs').readFileSync('stream/index.html','utf8');
 function chrome(){
- const classes=new Set(),elements={'watch-drawer':{hidden:true},'playback-failure':{hidden:true}};
+ const classes=new Set(),elements={'watch-drawer':{hidden:true}};
  const context={$:id=>elements[id],window:{addEventListener:(name,fn)=>context.receive=fn},document:{body:{classList:{add:c=>classes.add(c),remove:c=>classes.delete(c)}},documentElement:{classList:{contains:()=>false}},querySelector:()=>null,addEventListener(){}},isCurrentPlayerFrame:()=>true,clearTimeout(){},setTimeout(fn){context.idle=fn;return 1;}};
  vm.createContext(context);vm.runInContext(html.slice(html.indexOf('let chromeTimer='),html.indexOf('/* Watch settings float')),context);
  return {context,elements,classes};
