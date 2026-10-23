@@ -16,7 +16,7 @@ TFLIX is a movie and TV discovery and streaming app powered by [TMDB](https://ww
 - Choose from six streaming sources; the desktop app opens their player pages in a dedicated native WebView, while web and Android use iframes
 - Resume recently watched titles using locally saved playback progress
 - Change episodes and sources from the desktop player controls; use the custom subtitle panel on Ekko
-- Open the current source and episode in your system browser from the source menu when the native player cannot play it
+- Open the current source and episode in your system browser from the app's native Playback menu when the native player cannot play it
 - Use the website, the Tauri desktop app, or the Android app for phones, tablets, and Android TV
 - Block pop-up windows opened by embedded players in the desktop and Android apps
 

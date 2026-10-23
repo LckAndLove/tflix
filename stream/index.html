@@ -912,22 +912,31 @@ function nativePlayerModel() {
 if (window.TFLIX_NATIVE_PLAYER) {
   const native=window.TFLIX_NATIVE_PLAYER;
   let externalOpening=false;
+  let browserOpenedKey=null;
   native.onClose=()=>{ $('back-btn').click(); };
   native.onMedia=event=>{onWatchProgress(event);onWatchInteraction(event);};
-  native.onAction=async data=>{
+  native.onBrowserRequest=async()=>{
     if(!state || externalOpening)return;
-    if(data.action==='sync'){native.update(nativePlayerModel());return;}
-    if(data.action==='browser') {
-      if(externalOpening)return;
       externalOpening=true;
+      const key=[state.type,state.id,state.server,state.season||1,state.episode||1].join(':');
       try {
-        await window.__TAURI__.core.invoke('open_player_external',{request:{url:sourceUrlFor(state.server),server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang}});
+        if(browserOpenedKey!==key){
+          await window.__TAURI__.core.invoke('open_player_external',{request:{url:sourceUrlFor(state.server),server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang}});
+          browserOpenedKey=key;
+        }
         await native.close();
         $('back-btn').click();
       } catch {
-        native.update({...nativePlayerModel(),browserError:currentLang==='zh'?'未能打开浏览器，请重试':'Could not open the browser. Please retry.'});
+        const message=browserOpenedKey===key
+          ?(currentLang==='zh'?'浏览器已打开，关闭播放器失败。请从播放菜单重试。':'Browser opened, but the player could not close. Retry from the Playback menu.')
+          :(currentLang==='zh'?'未能打开浏览器，请从播放菜单重试。':'Could not open the browser. Retry from the Playback menu.');
+        native.update({...nativePlayerModel(),browserError:message});
       } finally {externalOpening=false;}
-    } else if(data.action==='source' && serverUrlResolvers[data.server]) {
+  };
+  native.onAction=async data=>{
+    if(!state || externalOpening)return;
+    if(data.action==='sync'){native.update(nativePlayerModel());return;}
+    if(data.action==='source' && serverUrlResolvers[data.server]) {
       localStorage.setItem(STORAGE_KEY,String(data.server));
       if(data.server===state.server){rememberCurrentEpisodeServer();return;}
       if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};

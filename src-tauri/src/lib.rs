@@ -100,6 +100,21 @@ pub fn run() {
         .manage(native_player::PlayerState::default())
         .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player, native_player::open_player_external, native_player::update_native_player, native_player::send_native_player, native_player::close_native_player, native_player::native_player_event])
         .setup(|app| {
+            let browser_item=tauri::menu::MenuItem::with_id(app,native_player::BROWSER_MENU_ID,"在浏览器播放 / Play in Browser",false,None::<&str>)?;
+            let playback=tauri::menu::Submenu::with_id_and_items(app,native_player::PLAYBACK_MENU_ID,"播放 / Playback",true,&[&browser_item])?;
+            let menu=tauri::menu::Menu::default(app.handle())?;
+            menu.append(&playback)?;
+            app.set_menu(menu)?;
+            // This event originates only in the native menu, outside source-page JS.
+            app.on_menu_event(|app,event| {
+                if event.id().as_ref()==native_player::BROWSER_MENU_ID {
+                    if let Some(player)=native_player::active_window(app) {
+                        if let Some(session)=player.label().strip_prefix("playback-").and_then(|id|id.parse::<u64>().ok()) {
+                            let _=app.emit_to("main","native-player-browser-request",session);
+                        }
+                    }
+                }
+            });
             let app_handle = app.handle().clone();
             let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("TFLIX")

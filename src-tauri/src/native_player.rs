@@ -6,6 +6,21 @@ use std::sync::{
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+pub const PLAYBACK_MENU_ID: &str = "tflix-playback";
+pub const BROWSER_MENU_ID: &str = "tflix-play-in-browser";
+
+fn refresh_browser_menu(app: &tauri::AppHandle) {
+    if let Some(item) = app
+        .menu()
+        .and_then(|menu| menu.get(PLAYBACK_MENU_ID))
+        .and_then(|item| item.as_submenu().and_then(|menu| menu.get(BROWSER_MENU_ID)))
+    {
+        if let Some(item) = item.as_menuitem() {
+            let _ = item.set_enabled(active_window(app).is_some());
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct PlayerState {
     serial: AtomicU64,
@@ -191,6 +206,7 @@ pub async fn open_native_player(
     player.on_window_event(move |event| {
         if matches!(event, tauri::WindowEvent::Destroyed) && is_active(&close_app, session) {
             *close_app.state::<PlayerState>().active.lock().unwrap() = None;
+            refresh_browser_menu(&close_app);
             if let Some(main) = close_app.get_webview_window("main") {
                 let _ = main.show();
                 let _ = main.set_focus();
@@ -214,6 +230,7 @@ pub async fn open_native_player(
         let _ = player.set_fullscreen(true);
     }
     player.show().map_err(|e| e.to_string())?;
+    refresh_browser_menu(&app);
     let _ = player.set_focus();
     Ok(session)
 }
@@ -249,7 +266,6 @@ fn player_event(session: u64, payload: &str) -> Option<serde_json::Value> {
                 | "language"
                 | "provider-episode"
                 | "sync"
-                | "browser"
                 | "back"
         ) {
             return None;
@@ -399,11 +415,27 @@ pub async fn close_native_player(
 ) -> Result<(), String> {
     controller(&window)?;
     if is_active(&app, session) {
-        *app.state::<PlayerState>().active.lock().unwrap() = None;
-        if let Some(player) = app.get_webview_window(&format!("playback-{session}")) {
-            let _ = player.close();
-        }
+        // Ensure a visible return window before closing the player. Failed close
+        // requests keep the active session and restore the previous visibility.
+        let was_visible = window.is_visible().map_err(|e| e.to_string())?;
         window.show().map_err(|e| e.to_string())?;
+        if let Some(player) = app.get_webview_window(&format!("playback-{session}")) {
+            if let Err(error) = player.close() {
+                if !was_visible {
+                    let _ = window.hide();
+                }
+                let _ = player.set_focus();
+                return Err(error.to_string());
+            }
+        }
+        {
+            let state = app.state::<PlayerState>();
+            let mut active = state.active.lock().unwrap();
+            if active.as_ref().is_some_and(|(id, _)| *id == session) {
+                *active = None;
+            }
+        }
+        refresh_browser_menu(&app);
         let _ = window.set_focus();
     }
     Ok(())
@@ -473,12 +505,11 @@ mod tests {
         )
         .is_some());
         assert!(player_event(1, r#"{"action":"source","server":2}"#).is_some());
-        assert_eq!(
-            player_event(1, r#"{"action":"browser","url":"file:///private/data"}"#),
-            Some(serde_json::json!({"session":1,"action":"browser"}))
-        );
+        assert!(player_event(1, r#"{"action":"browser"}"#).is_none());
         for payload in [
             r#"{"action":"eval","script":"bad"}"#,
+            r#"{"action":"browser","url":"https://cinesrc.st/embed/movie/550"}"#,
+            r#"{"type":"native-player-browser-request","frameId":1}"#,
             r#"{"type":"tflix:media-error","frameId":1}"#,
             r#"{"type":"tflix:media-progress","frameId":1,"currentTime":-1}"#,
             r#"{"action":"season","season":0}"#,

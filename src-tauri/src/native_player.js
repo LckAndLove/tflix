@@ -51,8 +51,6 @@
     if(panel==='sources'){
       sources.replaceChildren();
       for(const source of model.sources||[]){const el=button(source.name,()=>{action('source',{server:source.id});close();});el.setAttribute('aria-current',String(source.id===model.server));sources.appendChild(el);}
-      const browser=button(word('在浏览器播放','Play in browser'),()=>{browser.disabled=true;action('browser');});browser.className='browser';sources.appendChild(browser);
-      if(model.browserError){const error=document.createElement('p');error.setAttribute('role','alert');error.textContent=model.browserError;sources.appendChild(error);}
     }
     if(panel==='episodes'){
       episodes.replaceChildren();
@@ -76,6 +74,7 @@
     if(!root)return;
     const title=(model.title||'TFLIX')+(model.type==='tv'?` · S${model.season} E${model.episode}`:'');
     root.querySelector('#title').textContent=title;
+    const error=root.querySelector('#browser-error');error.textContent=model.browserError||'';error.hidden=!model.browserError;
     document.title=title+' — TFLIX';
     root.querySelector('#back').setAttribute('aria-label',word('返回','Back'));
     root.querySelector('#episodes').textContent=word('选集','Episodes');root.querySelector('#episodes').hidden=model.type!=='tv';
@@ -93,11 +92,11 @@
       root.innerHTML=`<style>
         :host{all:initial}*{box-sizing:border-box;-webkit-user-select:none;user-select:none}[hidden]{display:none!important}
         nav{height:76px;display:flex;align-items:center;gap:16px;padding:0 24px;background:linear-gradient(#000d,transparent);font:14px Arial,sans-serif;color:#eee;pointer-events:auto;transition:opacity .2s}nav.idle{opacity:0;pointer-events:none}button,select{font:inherit;color:inherit}button{border:0;background:transparent;padding:10px;cursor:pointer;border-radius:3px}button:hover{background:#ffffff18}button:disabled{opacity:.4;cursor:default}button:focus-visible,select:focus-visible{outline:2px solid white;outline-offset:2px}#title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#source-wrap{position:relative}#source{width:110px}#source:after{content:'⌄';margin-left:10px}
-        #sources-menu,#episodes-menu{font:14px Arial,sans-serif;color:#eee;background:#181818fa;border-radius:4px;box-shadow:0 12px 40px #0008;pointer-events:auto}#sources-menu{position:absolute;right:0;top:calc(100% + 6px);width:110px;padding:6px}#sources-menu button{display:block;width:100%;text-align:left;font-size:12px}#sources-menu .browser{border-top:1px solid #ffffff20;border-radius:0;margin-top:6px;padding-top:12px}button[aria-current=true]{background:#ffffff18}
+        #sources-menu,#episodes-menu{font:14px Arial,sans-serif;color:#eee;background:#181818fa;border-radius:4px;box-shadow:0 12px 40px #0008;pointer-events:auto}#sources-menu{position:absolute;right:0;top:calc(100% + 6px);width:110px;padding:6px}#sources-menu button{display:block;width:100%;text-align:left;font-size:12px}#browser-error{position:fixed;top:84px;right:24px;max-width:min(400px,calc(100vw - 48px));padding:14px;background:#242424;color:#eee;font:13px/1.6 Arial,sans-serif;pointer-events:auto}button[aria-current=true]{background:#ffffff18}
         #episodes-menu{position:fixed;right:24px;top:84px;width:min(480px,calc(100vw - 48px));max-height:calc(100vh - 108px);overflow:auto;scrollbar-width:none;padding:16px}#episodes-menu::-webkit-scrollbar{display:none}.panel-title{display:flex;align-items:center;justify-content:space-between;font-size:18px;font-weight:600}select{margin:12px 0;padding:8px;background:#292929;border:1px solid #555;border-radius:3px}p{font-size:13px;color:#aaa}.episode{display:flex;gap:14px;width:100%;padding:12px 8px;text-align:left}.still{position:relative;display:grid;place-items:center;flex:0 0 108px;aspect-ratio:16/9;background:#292929;border-radius:3px;overflow:hidden}.still img{position:absolute;width:100%;height:100%;object-fit:cover}.episode strong{display:block;font-size:14px;margin-bottom:7px}.episode span span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#aaa;font-size:12px;line-height:1.5}#episodes-menu>button:last-child{float:right}
         @media(max-width:700px){nav{padding:0 12px;gap:4px}#source{width:86px}#sources-menu{width:86px}.still{flex-basis:80px}}
         @media(prefers-reduced-motion:reduce){nav{transition:none}}
-      </style><nav><button id="back" type="button">${escapeIcon}</button><span id="title"></span><button id="episodes" type="button" aria-haspopup="dialog" aria-expanded="false"></button><div id="source-wrap"><button id="source" type="button" aria-haspopup="menu" aria-expanded="false"></button><div id="sources-menu" role="menu" hidden></div></div><button id="language" type="button" aria-label="Language / 语言"></button></nav><section id="episodes-menu" role="dialog" hidden></section>`;
+      </style><nav><button id="back" type="button">${escapeIcon}</button><span id="title"></span><button id="episodes" type="button" aria-haspopup="dialog" aria-expanded="false"></button><div id="source-wrap"><button id="source" type="button" aria-haspopup="menu" aria-expanded="false"></button><div id="sources-menu" role="menu" hidden></div></div><button id="language" type="button" aria-label="Language / 语言"></button></nav><div id="browser-error" role="alert" hidden></div><section id="episodes-menu" role="dialog" hidden></section>`;
       root.querySelector('#back').addEventListener('click',()=>action('back'));
       root.querySelector('#episodes').addEventListener('click',()=>toggle('episodes'));
       root.querySelector('#source').addEventListener('click',()=>toggle('sources'));
