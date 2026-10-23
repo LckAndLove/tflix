@@ -368,6 +368,14 @@ function loadPlayer() {
   const src = sourceUrlFor(state.server);
   updateServerCards();
 
+  if (window.__TFLIX_NATIVE_PLAYER__ && state.server === 4) {
+    $('player').removeAttribute('src');
+    window.__TAURI__.core.invoke('open_native_player', {request:{url:src,server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang}})
+      .catch(()=>toast(currentLang==='zh'?'播放器未能打开，请重试':'Could not open the player. Please retry.'));
+    syncUrl();
+    return;
+  }
+
   // Recreate the iframe on every load so the Permissions Policy
   // (allow="fullscreen; ...") is re-applied for the new origin.
   // Navigating an existing iframe via contentWindow.location drops the
@@ -889,6 +897,10 @@ document.addEventListener('keydown',e=>{
     else if(!e.shiftKey && document.activeElement === last) {e.preventDefault();first?.focus();}
   }
 });
+
+if (window.__TFLIX_NATIVE_PLAYER__) {
+  window.__TAURI__.event.listen('native-player-closed',()=>{ $('back-btn').click(); });
+}
 
 /* ─── NAV ─── */
 $('logo').addEventListener('click', () => { location.href = '../index.html'; });

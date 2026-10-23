@@ -4,6 +4,7 @@ use tauri_plugin_updater::UpdaterExt;
 use serde::Serialize;
 
 mod player_bridge;
+mod native_player;
 
 const SUPPORT_URL: &str = "https://github.com/LckAndLove/tflix";
 
@@ -95,13 +96,14 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external])
+        .manage(native_player::PlayerState::default())
+        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player])
         .setup(|app| {
             let app_handle = app.handle().clone();
             let player_origin = player_bridge::start()?;
             let bridge_origin = tauri::Url::parse(&player_origin)?.origin();
             let player_script = format!(
-                "window.__TFLIX_PLAYER_ORIGIN__ = {};",
+                "window.__TFLIX_PLAYER_ORIGIN__ = {}; window.__TFLIX_NATIVE_PLAYER__ = true;",
                 serde_json::to_string(&player_origin)?
             );
             let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
