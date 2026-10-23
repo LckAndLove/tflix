@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "native-player",
+  "description": "Playback windows may report validated playback events only. No updater, file or system permissions.",
+  "local": false,
+  "windows": [
+    "playback-*"
+  ],
+  "remote": {
+    "urls": [
+      "https://cinesrc.st/*"
+    ]
+  },
+  "permissions": [
+    "allow-native-player-event"
+  ]
+}

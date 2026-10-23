@@ -188,6 +188,7 @@
   <div id="toast"></div>
 
 <script src="source-config.js"></script>
+<script src="native-player-client.js"></script>
 <script>
 document.addEventListener('contextmenu', event => event.preventDefault());
 /* ─── CONFIG ─── */
@@ -368,13 +369,14 @@ function loadPlayer() {
   const src = sourceUrlFor(state.server);
   updateServerCards();
 
-  if (window.__TFLIX_NATIVE_PLAYER__ && state.server === 4) {
+  if (window.TFLIX_NATIVE_PLAYER && state.server === 4) {
     $('player').removeAttribute('src');
-    window.__TAURI__.core.invoke('open_native_player', {request:{url:src,server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang}})
+    window.TFLIX_NATIVE_PLAYER.open({url:src,server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang,model:nativePlayerModel()})
       .catch(()=>toast(currentLang==='zh'?'播放器未能打开，请重试':'Could not open the player. Please retry.'));
     syncUrl();
     return;
   }
+  window.TFLIX_NATIVE_PLAYER?.close().catch(()=>{});
 
   // Recreate the iframe on every load so the Permissions Policy
   // (allow="fullscreen; ...") is re-applied for the new origin.
@@ -415,6 +417,7 @@ function updateServerCards() {
 }
 
 function isCurrentPlayerFrame(source) {
+  if (window.TFLIX_NATIVE_PLAYER?.isCurrentFrame(source)) return true;
   const root = $('player')?.contentWindow;
   if (!root) return false;
   const pending = [root];
@@ -440,6 +443,7 @@ function updateTitleBar() {
     ? `${esc(base)}${epTag}`
     : esc(base);
   document.title = `${base} — TFLIX`;
+  window.TFLIX_NATIVE_PLAYER?.update(nativePlayerModel());
 }
 
 /* ─── SERVERS ─── */
@@ -698,6 +702,7 @@ function updateNextBtn() {
   const next = state?.type === 'tv' ? computeNext() : null;
   btn.disabled = !next;
   btn.title = next ? t('nextEpTitle').replace('%s', next.season).replace('%s', next.episode) : t('noNextEp');
+  if(typeof window!=='undefined')window.TFLIX_NATIVE_PLAYER?.update(nativePlayerModel());
 }
 
 async function goNextEpisode() {
@@ -754,8 +759,8 @@ function toast(msg){
 }
 
 /* ─── PROVIDER EPISODE SELECTION ─── */
-window.addEventListener('message',async event=>{
-  if(event.data?.type!=='tflix:episode-changed' || !isCurrentPlayerFrame(event.source) || state?.type!=='tv')return;
+async function onProviderEpisodeSelection(event) {
+  if(event.data?.type!=='tflix:episode-changed' || (!event.native && !isCurrentPlayerFrame(event.source)) || state?.type!=='tv')return;
   const {season,episode}=event.data;
   if(!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
   const previousServer=state.server;
@@ -767,7 +772,8 @@ window.addEventListener('message',async event=>{
   applyEpisodeServerPreference();
   if(state.server!==previousServer) loadPlayer();
   else syncUrl();
-});
+}
+window.addEventListener('message',onProviderEpisodeSelection);
 
 /* ─── WATCH PROGRESS ─── */
 // Resume only the same provider and matching media duration. Never persist URLs
@@ -775,7 +781,7 @@ window.addEventListener('message',async event=>{
 const resumedFrames=new WeakMap();
 function progressKey(){return [state.type,state.id,state.season||0,state.episode||0,state.server].join(':');}
 function readProgress(){try{const data=JSON.parse(localStorage.getItem('tflix_progress_v1')||'{}');if(!data||typeof data!=='object'||Array.isArray(data))return {};return Object.fromEntries(Object.entries(data).filter(([,v])=>v&&Number.isFinite(v.time)&&Number.isFinite(v.duration)&&Number.isFinite(v.updatedAt)));}catch{return {};}}
-window.addEventListener('message',event=>{
+function onWatchProgress(event) {
   const type=event.data?.type;
   if(!['tflix:media-ready','tflix:media-progress','tflix:media-resumed'].includes(type) || !state || !isCurrentPlayerFrame(event.source)) return;
   const {currentTime,duration,ended,mediaType,mediaId,season,episode}=event.data;
@@ -815,7 +821,8 @@ window.addEventListener('message',event=>{
   else entries[key]={time:currentTime,duration,updatedAt:Date.now()};
   const recent=Object.entries(entries).sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0,100);
   try{localStorage.setItem('tflix_progress_v1',JSON.stringify(Object.fromEntries(recent)));}catch{}
-});
+}
+window.addEventListener('message',onWatchProgress);
 
 /* ─── END WATCH PROGRESS ─── */
 
@@ -834,13 +841,14 @@ function revealWatchControls() {
   },3500);
 }
 for(const name of ['pointermove','pointerdown','keydown']) document.addEventListener(name,revealWatchControls,{passive:true});
-window.addEventListener('message',event=>{
+function onWatchInteraction(event) {
   const type=event.data?.type;
   if(!['tflix:interaction','tflix:media-playing','tflix:media-paused'].includes(type) || !isCurrentPlayerFrame(event.source)) return;
   if(type !== 'tflix:interaction') watchPlaying=type==='tflix:media-playing';
 
   revealWatchControls();
-});
+}
+window.addEventListener('message',onWatchInteraction);
 
 /* Watch settings float above the video; opening them never reloads it. */
 let drawerTrigger = null;
@@ -898,8 +906,43 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-if (window.__TFLIX_NATIVE_PLAYER__) {
-  window.__TAURI__.event.listen('native-player-closed',()=>{ $('back-btn').click(); });
+function nativePlayerModel() {
+  const episodes=seasonCache[`${currentLang}-${state.id}-${state.season}`]?.episodes||[];
+  return {id:String(state.id),type:state.type,title:state.title||'',server:state.server,season:state.season||1,episode:state.episode||1,language:currentLang,
+    sources:[...SERVERS].sort((a,b)=>b.reviewScore-a.reviewScore).map(s=>({id:s.id,name:s.name})),
+    seasons:(tvData?.seasons||[]).filter(s=>s.season_number>0 && s.episode_count>0).map(s=>({number:s.season_number})),
+    episodes:episodes.map(ep=>({number:ep.episode_number,name:ep.name||'',overview:ep.overview||'',still:typeof ep.still_path==='string' && /^\/[a-zA-Z0-9._-]+$/.test(ep.still_path)?`https://image.tmdb.org/t/p/w300${ep.still_path}`:null})),
+    hasNext:state.type==='tv' && !!computeNext(),episodeStatus:$('episode-status').textContent||'',retry:!$('episode-retry').hidden,retrySeason:Number($('season-select').value)||state.season};
+}
+if (window.TFLIX_NATIVE_PLAYER) {
+  const native=window.TFLIX_NATIVE_PLAYER;
+  native.onClose=()=>{ $('back-btn').click(); };
+  native.onMedia=event=>{onWatchProgress(event);onWatchInteraction(event);};
+  native.onAction=async data=>{
+    if(!state)return;
+    if(data.action==='sync'){native.update(nativePlayerModel());return;}
+    if(data.action==='source' && serverUrlResolvers[data.server]) {
+      localStorage.setItem(STORAGE_KEY,String(data.server));
+      if(data.server===state.server){rememberCurrentEpisodeServer();return;}
+      if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};
+      state.server=data.server;rememberCurrentEpisodeServer();buildServers();loadPlayer();
+    } else if(data.action==='language') {
+      await changeLanguage(currentLang==='zh'?'en':'zh');native.update(nativePlayerModel());
+    } else if(data.action==='season' && state.type==='tv' && tvData?.seasons?.some(s=>s.season_number===data.season && s.episode_count>0)) {
+      $('season-select').value=String(data.season);
+      native.update({...nativePlayerModel(),episodeStatus:t('loading')});
+      if(await populateEpisodes(true,data.season)){applyEpisodeServerPreference();loadPlayer();}
+      else native.update(nativePlayerModel());
+    } else if(data.action==='episode' && state.type==='tv' && seasonCache[`${currentLang}-${state.id}-${state.season}`]?.episodes?.some(ep=>ep.episode_number===data.episode)) {
+      if(state.episode===data.episode)return;
+      state.episode=data.episode;$('episode-select').value=String(data.episode);applyEpisodeServerPreference();updateNextBtn();loadPlayer();
+    } else if(data.action==='next' && state.type==='tv') {
+      await goNextEpisode();
+    } else if(data.action==='provider-episode' && state.type==='tv' && state.server===4) {
+      // Provider episode changes already navigated the real player; sync only.
+      await onProviderEpisodeSelection({source:{},data:{type:'tflix:episode-changed',season:data.season,episode:data.episode},native:true});
+    }
+  };
 }
 
 /* ─── NAV ─── */

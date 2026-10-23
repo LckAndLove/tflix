@@ -8,6 +8,13 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "updater:default"
+    "updater:default",
+    "allow-check-update",
+    "allow-install-update",
+    "allow-open-external",
+    "allow-open-native-player",
+    "allow-update-native-player",
+    "allow-send-native-player",
+    "allow-close-native-player"
   ]
 }

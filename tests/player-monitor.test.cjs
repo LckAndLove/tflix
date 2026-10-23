@@ -3,11 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function monitor(duration = 120, readyState = 2, text = '') {
+function monitor(duration = 120, readyState = 2, text = '', native = false) {
   const signals = [], listeners = {};let now=1000;
   const video = { duration, readyState, currentTime:0, paused:false, seeking:false, ended:false, addEventListener(type, fn) { (listeners[type] ||= []).push(fn); } };
   const document = { body: { innerText: text }, querySelectorAll() { return [video]; } };
   const window = { top: { postMessage(data) { signals.push(data.type); } }, self: {} };
+  if(native){window.__TFLIX_NATIVE_MONITOR__=true;window.top=window;window.self=window;window.postMessage=data=>signals.push(data.type);}
   vm.runInNewContext(fs.readFileSync('src-tauri/src/player_monitor.js', 'utf8'), {
     window, document, Date:{now:()=>now}, setInterval(fn){listeners.interval=fn;return 1;}, MutationObserver: class { observe() {} }
   });
@@ -42,4 +43,10 @@ test('reports explicit sandbox refusal as permanent instead of a transient error
 });
 test('does not mistake ordinary sandbox text for a refusal',()=>{
  assert.deepEqual(monitor(0,0,'A sandbox adventure').signals,[]);
+});
+
+test('native top-level playback reports progress without inspecting failure text',()=>{
+ const player=monitor(120,2,'This video is unavailable',true);
+ player.setNow(6000);player.video.currentTime=30;player.fire('timeupdate');player.fire('error');
+ assert.deepEqual(player.signals,['tflix:media-ready','tflix:media-progress']);
 });

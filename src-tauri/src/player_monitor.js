@@ -3,7 +3,7 @@
 // the WebView; the top frame receives only media state signals.
 (function () {
   'use strict';
-  if (window.top === window.self || window.__TFLIX_MEDIA_MONITOR__) return;
+  if ((window.top === window.self && !window.__TFLIX_NATIVE_MONITOR__) || window.__TFLIX_MEDIA_MONITOR__) return;
   window.__TFLIX_MEDIA_MONITOR__ = true;
   let failureReported = false;
 
@@ -64,7 +64,7 @@
     video.addEventListener('pause', function () { report('tflix:media-paused'); }, { passive: true });
     video.addEventListener('error', function () {
       // Include failures after canplay but before the first playing event.
-      if (hasMedia) reportFailure();
+      if (hasMedia && !window.__TFLIX_NATIVE_MONITOR__) reportFailure();
     }, { passive: true });
     ready();
   }
@@ -78,7 +78,7 @@
     records.forEach(function (record) {
       record.addedNodes.forEach(scan);
     });
-    inspectErrorPage();
+    if (!window.__TFLIX_NATIVE_MONITOR__) inspectErrorPage();
   }).observe(document, { childList: true, characterData: true, subtree: true });
   let lastInteraction = 0;
   if (document.addEventListener) for (const name of ['pointermove','pointerdown','keydown']) document.addEventListener(name, function () {
@@ -88,5 +88,5 @@
     report('tflix:interaction');
   }, { passive:true });
   scan(document);
-  inspectErrorPage();
+  if (!window.__TFLIX_NATIVE_MONITOR__) inspectErrorPage();
 })();

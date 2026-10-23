@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-native-player-event"
+description = "Enables the native_player_event command without any pre-configured scope."
+commands.allow = ["native_player_event"]
+
+[[permission]]
+identifier = "deny-native-player-event"
+description = "Denies the native_player_event command without any pre-configured scope."
+commands.deny = ["native_player_event"]

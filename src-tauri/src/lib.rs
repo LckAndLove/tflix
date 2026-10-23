@@ -88,7 +88,8 @@ async fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String>
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(w) = app.get_webview_window("main") {
+            let focused=app.webview_windows().into_iter().find(|(label,_)|label.starts_with("playback-")).map(|(_,window)|window).or_else(||app.get_webview_window("main"));
+            if let Some(w) = focused {
                 let _ = w.show();
                 let _ = w.unminimize();
                 let _ = w.set_focus();
@@ -97,7 +98,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(native_player::PlayerState::default())
-        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player])
+        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player, native_player::update_native_player, native_player::send_native_player, native_player::close_native_player, native_player::native_player_event])
         .setup(|app| {
             let app_handle = app.handle().clone();
             let player_origin = player_bridge::start()?;
