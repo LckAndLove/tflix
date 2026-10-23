@@ -98,7 +98,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(native_player::PlayerState::default())
-        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player, native_player::update_native_player, native_player::send_native_player, native_player::close_native_player, native_player::native_player_event])
+        .invoke_handler(tauri::generate_handler![check_update, install_update, open_external, native_player::open_native_player, native_player::open_player_external, native_player::update_native_player, native_player::send_native_player, native_player::close_native_player, native_player::native_player_event])
         .setup(|app| {
             let app_handle = app.handle().clone();
             let _window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))

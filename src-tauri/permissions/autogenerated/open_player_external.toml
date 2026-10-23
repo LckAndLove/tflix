@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-player-external"
+description = "Enables the open_player_external command without any pre-configured scope."
+commands.allow = ["open_player_external"]
+
+[[permission]]
+identifier = "deny-open-player-external"
+description = "Denies the open_player_external command without any pre-configured scope."
+commands.deny = ["open_player_external"]

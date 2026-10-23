@@ -911,12 +911,23 @@ function nativePlayerModel() {
 }
 if (window.TFLIX_NATIVE_PLAYER) {
   const native=window.TFLIX_NATIVE_PLAYER;
+  let externalOpening=false;
   native.onClose=()=>{ $('back-btn').click(); };
   native.onMedia=event=>{onWatchProgress(event);onWatchInteraction(event);};
   native.onAction=async data=>{
-    if(!state)return;
+    if(!state || externalOpening)return;
     if(data.action==='sync'){native.update(nativePlayerModel());return;}
-    if(data.action==='source' && serverUrlResolvers[data.server]) {
+    if(data.action==='browser') {
+      if(externalOpening)return;
+      externalOpening=true;
+      try {
+        await window.__TAURI__.core.invoke('open_player_external',{request:{url:sourceUrlFor(state.server),server:state.server,mediaType:state.type,id:String(state.id),season:state.season||1,episode:state.episode||1,title:state.title||'',language:currentLang}});
+        await native.close();
+        $('back-btn').click();
+      } catch {
+        native.update({...nativePlayerModel(),browserError:currentLang==='zh'?'未能打开浏览器，请重试':'Could not open the browser. Please retry.'});
+      } finally {externalOpening=false;}
+    } else if(data.action==='source' && serverUrlResolvers[data.server]) {
       localStorage.setItem(STORAGE_KEY,String(data.server));
       if(data.server===state.server){rememberCurrentEpisodeServer();return;}
       if(latestMediaProgress?.server===state.server && Number.isFinite(latestMediaProgress.currentTime))pendingSourceSeek={time:latestMediaProgress.currentTime,fromServer:state.server};

@@ -4,6 +4,7 @@ use std::sync::{
     Mutex,
 };
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Default)]
 pub struct PlayerState {
@@ -217,6 +218,21 @@ pub async fn open_native_player(
     Ok(session)
 }
 
+// The local controller supplies the current selection. A remote page cannot
+// choose an arbitrary system URL through its event channel.
+#[tauri::command]
+pub async fn open_player_external(
+    app: tauri::AppHandle,
+    window: WebviewWindow,
+    request: PlayerRequest,
+) -> Result<(), String> {
+    controller(&window)?;
+    let url = validate(&request)?;
+    app.opener()
+        .open_url(url.as_str(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 fn player_event(session: u64, payload: &str) -> Option<serde_json::Value> {
     if payload.len() > 4096 {
         return None;
@@ -233,6 +249,7 @@ fn player_event(session: u64, payload: &str) -> Option<serde_json::Value> {
                 | "language"
                 | "provider-episode"
                 | "sync"
+                | "browser"
                 | "back"
         ) {
             return None;
@@ -456,6 +473,10 @@ mod tests {
         )
         .is_some());
         assert!(player_event(1, r#"{"action":"source","server":2}"#).is_some());
+        assert_eq!(
+            player_event(1, r#"{"action":"browser","url":"file:///private/data"}"#),
+            Some(serde_json::json!({"session":1,"action":"browser"}))
+        );
         for payload in [
             r#"{"action":"eval","script":"bad"}"#,
             r#"{"type":"tflix:media-error","frameId":1}"#,

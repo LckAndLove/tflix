@@ -13,6 +13,7 @@
     "allow-install-update",
     "allow-open-external",
     "allow-open-native-player",
+    "allow-open-player-external",
     "allow-update-native-player",
     "allow-send-native-player",
     "allow-close-native-player"

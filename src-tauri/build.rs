@@ -23,6 +23,7 @@ fn main() {
             "install_update",
             "open_external",
             "open_native_player",
+            "open_player_external",
             "update_native_player",
             "send_native_player",
             "close_native_player",
